@@ -14,11 +14,11 @@ torch = "^2.1.0"
 torch-geometric = "^2.4.0"
 # RLLib and Ray dependencies
 ray = { extras = ["rllib", "tune"], version = "^2.8.0" }
-# Additional PyG dependencies
-torch-scatter = "^2.1.2"
-torch-sparse = "^0.6.18"
-torch-cluster = "^1.6.3"
-torch-spline-conv = "^1.2.2"
+# Additional PyG dependencies - modified for compatibility
+torch-scatter = { version = "^2.1.2", markers = "platform_machine != 'x86_64'" }
+torch-sparse = { version = "^0.6.18", markers = "platform_machine != 'x86_64'" }
+torch-cluster = { version = "^1.6.3", markers = "platform_machine != 'x86_64'" }
+torch-spline-conv = { version = "^1.2.2", markers = "platform_machine != 'x86_64'" }
 # Data handling and utilities
 numpy = "^1.24.0"
 pandas = "^2.0.0"
@@ -28,7 +28,6 @@ scikit-learn = "^1.3.0"
 matplotlib = "^3.7.0"
 seaborn = "^0.12.0"
 tensorboard = "^2.14.0"
-wandb = "^0.15.0"
 # Configuration and utilities
 hydra-core = "^1.3.0"
 omegaconf = "^2.3.0"
@@ -59,9 +58,6 @@ memory-profiler = "^0.61.0"
 optional = true
 
 [tool.poetry.group.gpu.dependencies]
-# GPU-specific versions (uncomment based on your CUDA version)
-torch = { version = "^2.1.0", source = "pytorch-gpu" }
-torch-geometric = { version = "^2.4.0", source = "pytorch-gpu" }
 
 [tool.poetry.group.jupyter]
 optional = true
@@ -72,14 +68,9 @@ jupyterlab = "^4.0.0"
 ipywidgets = "^8.1.0"
 notebook = "^7.0.0"
 
-# Package sources for GPU versions
-[[tool.poetry.source]]
-name = "pytorch-gpu"
-url = "https://download.pytorch.org/whl/cu118"
-priority = "explicit"
-
+# Modified build-system requirements
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0", "setuptools"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
