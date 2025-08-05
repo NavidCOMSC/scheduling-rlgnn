@@ -205,3 +205,49 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Machine Learning & Deep Learning
+# ---------------------------------
+# Model artifacts and training outputs
+checkpoints/
+saved_models/
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+*.model
+
+# Large files and binaries
+# -------------------------
+# Prevent accidentally committing large files
+*.bin
+*.dat
+*.dump
+*.tar.gz
+*.zip
+# Exception for small config/example files
+!config/*.bin
+!examples/*.bin
+
+# OS generated files
+# ------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Configuration files with secrets
+# ---------------------------------
+config/secrets.yaml
+config/local.yaml
+.secrets
+credentials.json
+service-account*.json
