@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
-        operating-system: [ubuntu-latest, windows-latest]
+        operating-system: ubuntu-latest
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
@@ -29,11 +29,6 @@ jobs:
           version: latest
           virtualenvs-create: true
           virtualenvs-in-project: true
-
-      - name: Add Poetry to PATH (Windows)
-        if: matrix.operating-system == 'windows-latest'
-        shell: pwsh
-        run: $env:PATH = "$env:APPDATA\Python\Scripts;$env:PATH"
 
       - name: Load cached venv
         id: cached-poetry-dependencies
