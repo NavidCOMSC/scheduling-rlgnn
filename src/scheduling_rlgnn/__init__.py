@@ -1,5 +1,6 @@
 """
-Scheduling RLGNN: GNN architecture models with PyG and deep reinforcement learning.
+Scheduling RLGNN: GNN architecture models with PyG
+and deep reinforcement learning.
 """
 
 __version__ = "0.1.0"
