@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         operating-system: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.10, 3.11, 3.12]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v3
@@ -43,11 +43,34 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
 
-      - name: Run tests
-        run: poetry run pytest tests/ --cov=src/scheduling_rlgnn
+      - name: Run tests and generate coverage report
+        run: poetry run pytest tests/ --cov=src/scheduling_rlgnn --cov-report=xml
 
-      - name: Run linting
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+
+      - name: Install dependencies
         run: |
-          poetry run flake8 src/ tests/
-          poetry run black --check src/ tests/
-          poetry run isort --check-only src/ tests/
+          poetry install --with dev
+
+      - name: Run flake8
+        run: |
+          poetry run flake8
+
+      - name: Run mypy
+        run: |
+          poetry run mypy
