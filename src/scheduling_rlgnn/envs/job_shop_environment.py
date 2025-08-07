@@ -357,3 +357,9 @@ class JobShopEnvironment(Env):
         }
 
         return obs, reward, terminated, False, info
+
+    def _calculate_makespan(self) -> float:
+        """Calculate current makespan"""
+        if not self.operation_completion_times:
+            return 0.0
+        return max(self.operation_completion_times.values())
