@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
-from typing import Dict, Any, Tuple, Optional
+from torch_geometric.data import Data, Batch
+from typing import Any, Tuple, Optional
 import numpy as np
 
 
@@ -43,7 +44,7 @@ class JobShopEnvironment(Env):
 
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__()
 
         self.num_jobs = config.get("num_jobs", 3)
@@ -67,3 +68,87 @@ class JobShopEnvironment(Env):
         )
 
         self.reset()
+
+    # TODO: This method should be adjusted to take the JSP instance
+    def _generate_random_instance(self) -> JobShopInstance:
+        """Generates a random Job Shop Scheduling instance."""
+        processing_times = np.random.randint(
+            1, 10, (self.num_jobs, self.num_machines)
+        )
+
+        # Generate random machine sequences for each job
+        machine_sequences = np.array(
+            [
+                np.random.permutation(self.num_machines)
+                for _ in range(self.num_jobs)
+            ]
+        )
+
+        return JobShopInstance(
+            num_jobs=self.num_jobs,
+            num_machines=self.num_machines,
+            processing_times=processing_times,
+            machine_sequences=machine_sequences,
+        )
+
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[Dict] = None
+    ):
+        super().reset(seed=seed)
+
+        # Generate new instance
+        self.instance = self._generate_random_instance()
+
+        # Reset scheduling state
+        self.current_time = 0
+        self.completed_operations = set()
+        self.operation_start_times = {}
+        self.operation_completion_times = {}
+        self.machine_available_time = [0] * self.num_machines
+        self.step_count = 0
+
+        # Create graph representation
+        graph_data = self._create_graph_representation()
+
+        # Flatten observation
+        obs = self._flatten_observation(graph_data)
+
+        info = {"instance": self.instance}
+        return obs, info
+
+    # def _create_graph_representation(self) -> Data:
+    #     """Create PyG Data object representing the current scheduling state"""
+
+    #     # Nodes: operations (job_id, operation_idx) + machines
+    #     operation_nodes = []
+    #     machine_nodes = []
+
+    #     # Operation nodes
+    #     for job_id in range(self.num_jobs):
+    #         for op_idx in range(self.num_machines):
+    #             machine_id = self.instance.machine_sequences[job_id, op_idx]
+    #             processing_time = self.instance.processing_times[
+    #                 job_id, op_idx
+    #             ]
+
+    #             # Get scheduling info
+    #             start_time = self.operation_start_times.get(
+    #                 (job_id, op_idx), -1
+    #             )
+    #             completion_time = self.operation_completion_times.get(
+    #                 (job_id, op_idx), -1
+    #             )
+    #             status = (
+    #                 1 if (job_id, op_idx) in self.completed_operations else 0
+    #             )
+
+    #             operation_nodes.append(
+    #                 [
+    #                     processing_time,
+    #                     machine_id,
+    #                     job_id,
+    #                     start_time,
+    #                     completion_time,
+    #                     status,
+    #                 ]
+    #             )
