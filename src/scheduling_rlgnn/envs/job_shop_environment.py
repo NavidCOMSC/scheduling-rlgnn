@@ -1,10 +1,6 @@
 from dataclasses import dataclass
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
-
-# from ray.rllib.env import SingleAgentEnv
-# TODO: Investigate Ray RLlib's SingleAgentEnv for compatibility and best practices in single agent environments.
-
 from typing import Dict, Any, Tuple, Optional
 import numpy as np
 
@@ -29,24 +25,22 @@ class JobShopInstance:
         )
 
 
-class JobShopEnvironment(SingleAgentEnv):
+class JobShopEnvironment(Env):
     """
-    JobShopEnvironment is a custom environment for Job Shop Scheduling using a graph-based representation learning.
-
-    This environment is designed for reinforcement learning tasks, where jobs must be scheduled on machines to minimize makespan or other objectives. The environment models jobs and machines as nodes in a graph, with node features representing processing time, machine/job IDs, start/completion times, and status.
+    JobShopEnvironment is a custom environment for Job Shop Scheduling using a
+    graph-based representation learning. This environment is designed for reinforcement
+    learning tasks, where jobs must be scheduled on machines to minimize makespan or
+    other objectives. The environment models jobs and machines as nodes in a graph,
+    with node features representing processing time, machine/job IDs, start/completion
+    times, and status.
 
     Attributes:
         num_jobs (int): Number of jobs in the scheduling problem.
         num_machines (int): Number of machines available for processing jobs.
-        max_time_steps (int): Maximum number of time steps per episode.
+        max_time_steps (int): Maximum number of time steps per operation.
         action_space (Discrete): Action space representing job-machine assignments.
         observation_space (Box): Observation space encoding node features and global state.
 
-    TODO:
-        - The current version of RLlib is 2.48.0. The SingleAgentEnv class is no longer included in RLlib.
-        - Consider refactoring the environment to inherit from a supported RLlib environment base class (e.g., gym.Env or MultiAgentEnv).
-        - Use the command `python -c "import ray.rllib.env; print(dir(ray.rllib.env))"` to inspect available environment classes and methods in RLlib.
-        - Update environment methods to ensure compatibility with RLlib 2.48.0.
     """
 
     def __init__(self, config: Dict[str, Any]):
