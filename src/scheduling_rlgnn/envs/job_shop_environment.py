@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
 from torch_geometric.data import Data, Batch
-from typing import Any, Tuple
+from typing import Any
 import numpy as np
 import torch
 
@@ -204,3 +204,51 @@ class JobShopEnvironment(Env):
         )
 
         return Data(x=node_features, edge_index=edge_index)
+
+    def _flatten_observation(self, graph_data: Data) -> np.ndarray:
+        """Convert graph data to flat observation vector"""
+
+        node_features = graph_data.x
+        if node_features is None:
+            node_features = torch.empty((0, 6), dtype=torch.float32)
+
+        # Pad node features to max size
+        max_nodes = self.num_jobs * self.num_machines + self.num_machines
+        current_nodes = node_features.shape[0]
+
+        if current_nodes < max_nodes:
+            padding = torch.zeros(
+                (max_nodes - current_nodes, node_features.shape[1]),
+                dtype=node_features.dtype,
+            )
+            padded_features = torch.cat((node_features, padding), dim=0)
+        else:
+            padded_features = node_features[:max_nodes]
+
+        # Flatten and add global features
+        flattened = padded_features.flatten()
+        global_features = torch.tensor(
+            [self.current_time, self._calculate_makespan()]
+        )
+
+        return (
+            torch.cat([flattened, global_features]).numpy().astype(np.float32)
+        )
+
+    def _get_available_operations(self) -> list:
+        """Get list of operations that can be scheduled"""
+        available = []
+
+        for job_id in range(self.num_jobs):
+            for op_idx in range(self.num_machines):
+                if (job_id, op_idx) in self.completed_operations:
+                    continue
+
+                # Check if previous operation in job is completed
+                if (
+                    op_idx == 0
+                    or (job_id, op_idx - 1) in self.completed_operations
+                ):
+                    available.append((job_id, op_idx))
+
+        return available
