@@ -254,6 +254,36 @@ class JobShopEnvironment(Env):
         return available
 
     def step(self, action: int):
+        """
+            Execute one step in the job shop scheduling environment.
+
+            This method processes an agent's action to schedule a job operation
+            on a machine, updates the environment state, calculates rewards, and
+            determines if the episode has terminated.
+
+            Args:
+            action (int): Action encoded as an integer where:
+                         - job_id = action // num_machines
+                         - operation_index = action % num_machines
+                         This represents scheduling the specified
+                         operation of a job.
+
+        Returns:
+            tuple: A 5-tuple containing:
+                - obs (np.ndarray): Flattened observation of the updated
+                environment state
+                - reward (float): Reward for the action taken:
+                                 +1.0 for valid operation scheduling
+                                 +100/(makespan+1) bonus when all operations complete
+                                 -0.5 for invalid actions
+                - terminated (bool): True if episode is complete (all operations done
+                                   or max steps reached)
+                - truncated (bool): Always False (not used in this environment)
+                - info (dict): Dictionary containing:
+                              - 'makespan': Current makespan of the schedule
+                              - 'completed_operations': Number of completed operations
+                              - 'total_operations': Total operations in the problem
+        """
         self.step_count += 1
 
         # Decode action
