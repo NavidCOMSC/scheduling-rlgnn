@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
 from torch_geometric.data import Data, Batch
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple
 import numpy as np
+import torch
 
 
 @dataclass
@@ -91,9 +92,7 @@ class JobShopEnvironment(Env):
             machine_sequences=machine_sequences,
         )
 
-    def reset(
-        self, *, seed: Optional[int] = None, options: Optional[Dict] = None
-    ):
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
 
         # Generate new instance
@@ -116,39 +115,92 @@ class JobShopEnvironment(Env):
         info = {"instance": self.instance}
         return obs, info
 
-    # def _create_graph_representation(self) -> Data:
-    #     """Create PyG Data object representing the current scheduling state"""
+    def _create_graph_representation(self) -> Data:
+        """Create PyG Data object representing the current scheduling state"""
 
-    #     # Nodes: operations (job_id, operation_idx) + machines
-    #     operation_nodes = []
-    #     machine_nodes = []
+        # Nodes: operations (job_id, operation_idx) + machines
+        operation_nodes = []
+        machine_nodes = []
 
-    #     # Operation nodes
-    #     for job_id in range(self.num_jobs):
-    #         for op_idx in range(self.num_machines):
-    #             machine_id = self.instance.machine_sequences[job_id, op_idx]
-    #             processing_time = self.instance.processing_times[
-    #                 job_id, op_idx
-    #             ]
+        # Operation nodes
+        for job_id in range(self.num_jobs):
+            for op_idx in range(self.num_machines):
+                machine_id = self.instance.machine_sequences[job_id, op_idx]
+                processing_time = self.instance.processing_times[
+                    job_id, op_idx
+                ]
 
-    #             # Get scheduling info
-    #             start_time = self.operation_start_times.get(
-    #                 (job_id, op_idx), -1
-    #             )
-    #             completion_time = self.operation_completion_times.get(
-    #                 (job_id, op_idx), -1
-    #             )
-    #             status = (
-    #                 1 if (job_id, op_idx) in self.completed_operations else 0
-    #             )
+                # Get scheduling info
+                start_time = self.operation_start_times.get(
+                    (job_id, op_idx), -1
+                )
+                completion_time = self.operation_completion_times.get(
+                    (job_id, op_idx), -1
+                )
+                status = (
+                    1 if (job_id, op_idx) in self.completed_operations else 0
+                )
 
-    #             operation_nodes.append(
-    #                 [
-    #                     processing_time,
-    #                     machine_id,
-    #                     job_id,
-    #                     start_time,
-    #                     completion_time,
-    #                     status,
-    #                 ]
-    #             )
+                operation_nodes.append(
+                    [
+                        processing_time,
+                        machine_id,
+                        job_id,
+                        start_time,
+                        completion_time,
+                        status,
+                    ]
+                )
+
+        # Machine nodes
+        for machine_id in range(self.num_machines):
+            machine_availability = self.machine_available_time[machine_id]
+            machine_nodes.append(
+                [
+                    0,  # processing_time (not applicable)
+                    machine_id,
+                    -1,  # job_id (not applicable)
+                    machine_availability,
+                    machine_availability,
+                    1,  # always available
+                ]
+            )
+
+        # Combine all nodes
+        all_nodes = operation_nodes + machine_nodes
+        node_features = torch.tensor(all_nodes, dtype=torch.float32)
+
+        # Create edges
+        edge_indices = []
+
+        # Job precedence edges
+        for job_id in range(self.num_jobs):
+            for op_idx in range(self.num_machines - 1):
+                current_op = job_id * self.num_machines + op_idx
+                next_op = job_id * self.num_machines + op_idx + 1
+                edge_indices.extend(
+                    [[current_op, next_op], [next_op, current_op]]
+                )
+
+        # Machine assignment edges (operation to machine)
+        for job_id in range(self.num_jobs):
+            for op_idx in range(self.num_machines):
+                op_node_idx = job_id * self.num_machines + op_idx
+                machine_id = self.instance.machine_sequences[job_id, op_idx]
+                machine_node_idx = (
+                    self.num_jobs * self.num_machines + machine_id
+                )
+                edge_indices.extend(
+                    [
+                        [op_node_idx, machine_node_idx],
+                        [machine_node_idx, op_node_idx],
+                    ]
+                )
+
+        edge_index = (
+            torch.tensor(edge_indices, dtype=torch.long).t().contiguous()
+            if edge_indices
+            else torch.empty((2, 0), dtype=torch.long)
+        )
+
+        return Data(x=node_features, edge_index=edge_index)
