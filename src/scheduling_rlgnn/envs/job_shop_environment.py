@@ -252,3 +252,78 @@ class JobShopEnvironment(Env):
                     available.append((job_id, op_idx))
 
         return available
+
+    def step(self, action: int):
+        self.step_count += 1
+
+        # Decode action
+        job_id = action // self.num_machines
+        op_idx = action % self.num_machines
+
+        reward = 0
+        terminated = False
+
+        available_ops = self._get_available_operations()
+
+        if (job_id, op_idx) in available_ops:
+            # Valid action - schedule the operation
+            machine_id = self.instance.machine_sequences[job_id, op_idx]
+            processing_time = self.instance.processing_times[job_id, op_idx]
+
+            # Calculate start time
+            start_time = max(
+                self.current_time,
+                self.machine_available_time[machine_id],
+                (
+                    self.operation_completion_times.get(
+                        (job_id, op_idx - 1), 0
+                    )
+                    if op_idx > 0
+                    else 0
+                ),
+            )
+
+            completion_time = start_time + processing_time
+
+            # Update state
+            self.operation_start_times[(job_id, op_idx)] = start_time
+            self.operation_completion_times[(job_id, op_idx)] = completion_time
+            self.machine_available_time[machine_id] = completion_time
+            self.completed_operations.add((job_id, op_idx))
+
+            # Positive reward for scheduling
+            reward = 1.0
+
+            # Check if all operations completed
+            if (
+                len(self.completed_operations)
+                == self.num_jobs * self.num_machines
+            ):
+                terminated = True
+                makespan = self._calculate_makespan()
+                # Additional reward based on makespan (lower is better)
+                reward += 100.0 / (makespan + 1)
+
+        else:
+            # Invalid action
+            reward = -0.5
+
+        # Update current time
+        if self.completed_operations:
+            self.current_time = max(self.operation_completion_times.values())
+
+        # Check termination conditions
+        if self.step_count >= self.max_time_steps:
+            terminated = True
+
+        # Create new observation
+        graph_data = self._create_graph_representation()
+        obs = self._flatten_observation(graph_data)
+
+        info = {
+            "makespan": self._calculate_makespan(),
+            "completed_operations": len(self.completed_operations),
+            "total_operations": self.num_jobs * self.num_machines,
+        }
+
+        return obs, reward, terminated, False, info
