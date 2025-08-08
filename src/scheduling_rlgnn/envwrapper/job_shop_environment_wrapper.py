@@ -133,3 +133,19 @@ class JobShopEnvironmentWrapper:
                     break  # Only first available operation per job
 
         return available
+
+    def step(
+        self, action: int
+    ) -> Tuple[Dict[str, Any], float, bool, bool, Dict[str, Any]]:
+        """Execute action and return next observation, reward, done flags, and info."""
+        self.current_step += 1
+
+        # Execute action using Job Shop Lib
+        reward = self._execute_action(action)
+        terminated = self._is_terminated()
+        truncated = self.current_step >= self.max_steps
+
+        obs = self._get_observation()
+        info = self._get_info()
+
+        return obs, reward, terminated, truncated, info
