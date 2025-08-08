@@ -112,3 +112,24 @@ class JobShopEnvironmentWrapper:
         action_mask[: len(available_ops)] = True
 
         return {"obs": node_features.flatten(), "action_mask": action_mask}
+
+    def _get_available_operations(self) -> List[Operation]:
+        """Get list of operations that can be scheduled."""
+        available = []
+
+        for job in self.instance.jobs:
+            for i, operation in enumerate(job.operations):
+                # Check if all previous operations in the job are completed
+                prev_completed = all(
+                    (job.operations[j] in self.completed_operations)
+                    for j in range(i)
+                )
+
+                if (
+                    prev_completed
+                    and operation not in self.completed_operations
+                ):
+                    available.append(operation)
+                    break  # Only first available operation per job
+
+        return available
