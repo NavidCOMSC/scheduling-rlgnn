@@ -4,6 +4,8 @@ import torch
 from typing import Dict, Any, List, Tuple
 
 from job_shop_lib import JobShopInstance, Operation
+from job_shop_lib.dispatching import Dispatcher
+from job_shop_lib.dispatching.rules import EarliestDueDateRule
 
 
 class JobShopEnvironmentWrapper:
@@ -123,3 +125,48 @@ class JobShopEnvironmentWrapper:
         info = self._get_info()
 
         return obs, reward, terminated, truncated, info
+
+    def _execute_action(self, action: int) -> float:
+        """Execute the selected action and return the reward."""
+        # Map action to job and operation
+        available_ops = self._get_available_operations()
+
+        if not available_ops or action >= len(available_ops):
+            return -10.0  # Penalty for invalid action
+
+        # Select operation based on action
+        selected_operation = available_ops[action]
+
+        # Schedule the operation
+        machine_id = selected_operation.machine_id
+        start_time = max(
+            self.current_time,
+            max(
+                [op["end_time"] for op in self.machine_schedules[machine_id]],
+                default=0,
+            ),
+        )
+        end_time = start_time + selected_operation.duration
+
+        # Add to machine schedule
+        self.machine_schedules[machine_id].append(
+            {
+                "operation": selected_operation,
+                "start_time": start_time,
+                "end_time": end_time,
+                "job_id": self._get_job_id(selected_operation),
+            }
+        )
+
+        # Mark operation as completed
+        self.completed_operations.add(selected_operation)
+
+        # Update current time
+        self.current_time = max(self.current_time, end_time)
+
+        # Calculate reward (negative makespan improvement)
+        reward = self._calculate_reward(
+            selected_operation, start_time, end_time
+        )
+
+        return reward
