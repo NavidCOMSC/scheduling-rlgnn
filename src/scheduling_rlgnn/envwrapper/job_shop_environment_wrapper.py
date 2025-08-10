@@ -21,10 +21,6 @@ class JobShopEnvironmentWrapper:
 
         self.instance = instance
         self.max_steps = max_steps
-        # self.current_step = 0
-        # self.completed_operations: set["Operation"] = set()
-        # self.machine_schedules: Dict[int, List[Dict[str, Any]]] = {}
-        # self.current_time = 0
         self.reset()
 
     def reset(self) -> Dict[str, Any]:
@@ -98,7 +94,7 @@ class JobShopEnvironmentWrapper:
         """Get list of operations that can be scheduled."""
         available = []
 
-        for job in self.instance.jobs:
+        for job_id, job in enumerate(self.instance.jobs):
             for i, operation in enumerate(job):
                 # Check if all previous operations in the job are completed
                 prev_completed = all(
@@ -131,9 +127,7 @@ class JobShopEnvironmentWrapper:
         return obs, reward, terminated, truncated, info
 
     def _execute_action(self, action: int) -> float:
-        """implementation for processing the action to
-        select the operation to schedule.
-        """
+        """Execute the given action and return reward."""
 
         # Get available operations
         available_ops = self._get_available_operations()
@@ -143,15 +137,13 @@ class JobShopEnvironmentWrapper:
 
         selected_operation = available_ops[action]
         machine_id = selected_operation.machine_id
+        job_id = self._get_job_id(selected_operation)
 
-        # Find earliest start time for this operation on the machine
-        if self.machine_schedules[machine_id]:
-            last_end_time = self.machine_schedules[machine_id][-1]["end_time"]
-        else:
-            last_end_time = 0
-
-        # Start time must be >= max(global time, machine's last end time)
-        start_time = max(self.current_time, last_end_time)
+        # Calculate start time based on job and machine availability
+        start_time = max(
+            self.job_available_time[job_id],
+            self.machine_available_time[machine_id],
+        )
         end_time = start_time + selected_operation.duration
 
         # Update state
@@ -163,12 +155,13 @@ class JobShopEnvironmentWrapper:
             }
         )
 
-        self.completed_operations.add(selected_operation)
-        self.current_time = max(
-            self.current_time, end_time
-        )  # Update global time
+        # Update availability times
+        self.job_available_time[job_id] = end_time
+        self.machine_available_time[machine_id] = end_time
 
-        return self._calculate_reward(selected_operation, start_time, end_time)
+        self.completed_operations.add(selected_operation)
+
+        return self._calculate_reward(selected_operation, end_time)
 
     def _get_job_id(self, operation: Operation) -> int:
         """Get job ID for a given operation."""
@@ -178,15 +171,11 @@ class JobShopEnvironmentWrapper:
         return -1
 
     def _calculate_reward(
-        self, operation: Operation, start_time: float, end_time: float
+        self, operation: Operation, end_time: float
     ) -> float:
         """Calculate reward for scheduling an operation."""
         # Simple reward: negative of completion time (encourages earlier completion)
         base_reward = -end_time
-
-        # Bonus for completing operations without delay
-        if start_time == self.current_time:
-            base_reward += 1.0
 
         # Check if this completes a job
         job_id = self._get_job_id(operation)
@@ -205,19 +194,21 @@ class JobShopEnvironmentWrapper:
 
     def _get_info(self) -> Dict[str, Any]:
         """Get additional information about the current state."""
-        makespan = max(
-            [
-                max([op["end_time"] for op in schedule], default=0)
-                for schedule in self.machine_schedules.values()
-            ],
-            default=0,
+        makespan = (
+            max(self.machine_available_time)
+            if self.machine_available_time
+            else 0
         )
+
+        total_operations = sum(len(job) for job in self.instance.jobs)
 
         return {
             "makespan": makespan,
             "completed_operations": len(self.completed_operations),
-            "total_operations": sum(len(job) for job in self.instance.jobs),
-            "current_time": self.current_time,
-            "completion_rate": len(self.completed_operations)
-            / sum(len(job) for job in self.instance.jobs),
+            "total_operations": total_operations,
+            "completion_rate": (
+                len(self.completed_operations) / total_operations
+                if total_operations > 0
+                else 0
+            ),
         }
