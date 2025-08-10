@@ -1,37 +1,9 @@
 import gymnasium as gym
 import numpy as np
 import torch
-from typing import Dict, Any, List, Tuple, Optional, Union
+from typing import Dict, Any, List, Tuple
 
-
-# Job Shop Lib imports
-try:
-    from job_shop_lib import JobShopInstance, Operation, Job, Machine
-    from job_shop_lib.dispatching import DispatchingRule
-    from job_shop_lib.solvers import Solver
-except ImportError:
-    print(
-        "Warning: job_shop_lib not installed. Install with: pip install job-shop-lib"
-    )
-
-    # Mock classes for development
-    class JobShopInstance:
-        def __init__(self, jobs, machines):
-            self.jobs = jobs
-            self.machines = machines
-
-    class Operation:
-        def __init__(self, machine_id, processing_time):
-            self.machine_id = machine_id
-            self.processing_time = processing_time
-
-    class Job:
-        def __init__(self, operations):
-            self.operations = operations
-
-    class Machine:
-        def __init__(self, machine_id):
-            self.id = machine_id
+from job_shop_lib import JobShopInstance, Operation
 
 
 class JobShopEnvironmentWrapper:
@@ -41,11 +13,14 @@ class JobShopEnvironmentWrapper:
     Uses the new RLLib API stack.
     """
 
-    def __init__(self, instance: JobShopInstance, max_steps: int = 1000):
+    def __init__(self, instance: "JobShopInstance", max_steps: int = 1000):
 
         self.instance = instance
         self.max_steps = max_steps
         self.current_step = 0
+        self.completed_operations: set["Operation"] = set()
+        self.machine_schedules: Dict[int, List[Dict[str, Any]]] = {}
+        self.current_time = 0
         self.reset()
 
     def reset(self) -> Dict[str, Any]:
@@ -53,10 +28,9 @@ class JobShopEnvironmentWrapper:
         self.current_step = 0
         self.completed_operations = set()
         self.machine_schedules = {
-            machine.id: [] for machine in self.instance.machines
+            machine_id: [] for machine_id in range(self.instance.num_machines)
         }
         self.current_time = 0
-
         return self._get_observation()
 
     def _get_observation(self) -> Dict[str, Any]:
@@ -71,9 +45,9 @@ class JobShopEnvironmentWrapper:
 
         # Node features for operations
         for job in self.instance.jobs:
-            for operation in job.operations:
+            for operation in job:
                 features = [
-                    operation.processing_time,
+                    operation.duration,
                     float(operation in self.completed_operations),
                     operation.machine_id,
                     # Add more relevant features
@@ -81,15 +55,15 @@ class JobShopEnvironmentWrapper:
                 operation_nodes.append(features)
 
         # Node features for machines
-        for machine in self.instance.machines:
+        for machine_id in range(self.instance.num_machines):
             workload = sum(
                 op["end_time"] - op["start_time"]
-                for op in self.machine_schedules[machine.id]
+                for op in self.machine_schedules[machine_id]
             )
             features = [
-                machine.id,
+                machine_id,
                 workload,
-                len(self.machine_schedules[machine.id]),
+                len(self.machine_schedules[machine_id]),
                 # Add more machine features
             ]
             machine_nodes.append(features)
@@ -99,7 +73,8 @@ class JobShopEnvironmentWrapper:
         node_features = np.array(all_nodes, dtype=np.float32)
 
         # Pad to fixed size for consistency
-        max_nodes = 64  # Adjust based on your problem size
+        # TODO: investigate the initial required maximum number of nodes
+        max_nodes = 64
         if len(all_nodes) < max_nodes:
             padding = np.zeros(
                 (max_nodes - len(all_nodes), node_features.shape[1])
@@ -118,11 +93,10 @@ class JobShopEnvironmentWrapper:
         available = []
 
         for job in self.instance.jobs:
-            for i, operation in enumerate(job.operations):
+            for i, operation in enumerate(job):
                 # Check if all previous operations in the job are completed
                 prev_completed = all(
-                    (job.operations[j] in self.completed_operations)
-                    for j in range(i)
+                    (job[j] in self.completed_operations) for j in range(i)
                 )
 
                 if (
