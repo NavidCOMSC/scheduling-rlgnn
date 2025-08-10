@@ -14,17 +14,17 @@ class JobShopEnvironmentWrapper:
     """
     RLModule implementation for Job Shop Scheduling using Graph Neural Networks.
     Uses the new RLLib API stack.
+    Uses per-job and per-machine availability times instead of global current_time.
     """
 
     def __init__(self, instance: "JobShopInstance", max_steps: int = 1000):
 
-        # TODO: the current time approach needs to be revised to check for machine and operation availability
         self.instance = instance
         self.max_steps = max_steps
-        self.current_step = 0
-        self.completed_operations: set["Operation"] = set()
-        self.machine_schedules: Dict[int, List[Dict[str, Any]]] = {}
-        self.current_time = 0
+        # self.current_step = 0
+        # self.completed_operations: set["Operation"] = set()
+        # self.machine_schedules: Dict[int, List[Dict[str, Any]]] = {}
+        # self.current_time = 0
         self.reset()
 
     def reset(self) -> Dict[str, Any]:
@@ -34,7 +34,13 @@ class JobShopEnvironmentWrapper:
         self.machine_schedules = {
             machine_id: [] for machine_id in range(self.instance.num_machines)
         }
-        self.current_time = 0
+
+        # Per-job availability times (when job is ready for next operation)
+        self.job_available_time = [0.0] * len(self.instance.jobs)
+
+        # Per-machine availability times (when machine becomes free)
+        self.machine_available_time = [0.0] * self.instance.num_machines
+
         return self._get_observation()
 
     def _get_observation(self) -> Dict[str, Any]:
@@ -54,19 +60,15 @@ class JobShopEnvironmentWrapper:
                     operation.duration,
                     float(operation in self.completed_operations),
                     operation.machine_id,
-                    # Add more relevant features
+                    # Add more relevant features (plausibility)
                 ]
                 operation_nodes.append(features)
 
         # Node features for machines
         for machine_id in range(self.instance.num_machines):
-            workload = sum(
-                op["end_time"] - op["start_time"]
-                for op in self.machine_schedules[machine_id]
-            )
             features = [
                 machine_id,
-                workload,
+                self.machine_available_time[machine_id],
                 len(self.machine_schedules[machine_id]),
                 # Add more machine features
             ]
