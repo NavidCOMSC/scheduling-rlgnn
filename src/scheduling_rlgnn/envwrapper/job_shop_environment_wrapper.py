@@ -177,3 +177,24 @@ class JobShopEnvironmentWrapper:
             if operation in job:
                 return job_id
         return -1
+
+    def _calculate_reward(
+        self, operation: Operation, start_time: float, end_time: float
+    ) -> float:
+        """Calculate reward for scheduling an operation."""
+        # Simple reward: negative of completion time (encourages earlier completion)
+        base_reward = -end_time
+
+        # Bonus for completing operations without delay
+        if start_time == self.current_time:
+            base_reward += 1.0
+
+        # Check if this completes a job
+        job_id = self._get_job_id(operation)
+        job = self.instance.jobs[job_id]
+        job_completed = all(op in self.completed_operations for op in job)
+
+        if job_completed:
+            base_reward += 10.0  # Bonus for job completion
+
+        return base_reward
