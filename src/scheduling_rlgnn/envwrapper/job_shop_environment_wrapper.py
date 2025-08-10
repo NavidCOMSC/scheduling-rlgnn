@@ -166,6 +166,13 @@ class JobShopEnvironmentWrapper:
 
         return self._calculate_reward(selected_operation, start_time, end_time)
 
+    def _get_job_id(self, operation: Operation) -> int:
+        """Get job ID for a given operation."""
+        for job_id, job in enumerate(self.instance.jobs):
+            if operation in job:
+                return job_id
+        return -1
+
     def _calculate_reward(
         self, operation: Operation, start_time: float, end_time: float
     ) -> float:
