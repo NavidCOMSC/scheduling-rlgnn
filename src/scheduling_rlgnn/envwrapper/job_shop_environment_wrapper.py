@@ -193,3 +193,8 @@ class JobShopEnvironmentWrapper:
             base_reward += 10.0  # Bonus for job completion
 
         return base_reward
+
+    def _is_terminated(self) -> bool:
+        """Check if all operations are completed."""
+        total_operations = sum(len(job) for job in self.instance.jobs)
+        return len(self.completed_operations) == total_operations
