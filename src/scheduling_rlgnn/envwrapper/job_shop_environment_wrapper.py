@@ -170,3 +170,10 @@ class JobShopEnvironmentWrapper:
         )
 
         return reward
+
+    def _get_job_id(self, operation: Operation) -> int:
+        """Get job ID for a given operation."""
+        for job_id, job in enumerate(self.instance.jobs):
+            if operation in job:
+                return job_id
+        return -1
