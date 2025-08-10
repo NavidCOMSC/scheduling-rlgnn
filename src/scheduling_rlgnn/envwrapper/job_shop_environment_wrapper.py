@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Tuple
 
 from job_shop_lib import JobShopInstance, Operation
 from job_shop_lib.dispatching import Dispatcher
-from job_shop_lib.dispatching.rules import EarliestDueDateRule
+from job_shop_lib.dispatching.rules import ShortestProcessingTimeRule
 
 
 class JobShopEnvironmentWrapper:
@@ -127,17 +127,20 @@ class JobShopEnvironmentWrapper:
         return obs, reward, terminated, truncated, info
 
     def _execute_action(self, action: int) -> float:
-        """Execute the selected action and return the reward."""
-        # Map action to job and operation
+        """Alternative implementation using Dispatcher from job_shop_lib."""
+
+        # Create a dispatcher with a rule
+        dispatcher = Dispatcher(ShortestProcessingTimeRule())
+
+        # Get available operations
         available_ops = self._get_available_operations()
 
         if not available_ops or action >= len(available_ops):
-            return -10.0  # Penalty for invalid action
+            return -10.0
 
-        # Select operation based on action
         selected_operation = available_ops[action]
 
-        # Schedule the operation
+        # Manual Scheduling
         machine_id = selected_operation.machine_id
         start_time = max(
             self.current_time,
@@ -146,55 +149,23 @@ class JobShopEnvironmentWrapper:
                 default=0,
             ),
         )
+
         end_time = start_time + selected_operation.duration
 
-        # Add to machine schedule
+        # Update state
         self.machine_schedules[machine_id].append(
             {
                 "operation": selected_operation,
                 "start_time": start_time,
                 "end_time": end_time,
-                "job_id": self._get_job_id(selected_operation),
             }
         )
-
-        # Mark operation as completed
+        
         self.completed_operations.add(selected_operation)
-
-        # Update current time
         self.current_time = max(self.current_time, end_time)
-
-        # Calculate reward (negative makespan improvement)
-        reward = self._calculate_reward(
-            selected_operation, start_time, end_time
-        )
-
-        return reward
-
-    def _get_job_id(self, operation: Operation) -> int:
-        """Get job ID for a given operation."""
-        for job_id, job in enumerate(self.instance.jobs):
-            if operation in job:
-                return job_id
-        return -1
-
-    def _calculate_reward(
-        self, operation: Operation, start_time: float, end_time: float
-    ) -> float:
-        """Calculate reward for scheduling an operation."""
-        # Simple reward: negative of completion time (encourages earlier completion)
-        base_reward = -end_time
-
-        # Bonus for completing operations without delay
-        if start_time == self.current_time:
-            base_reward += 1.0
-
-        # Check if this completes a job
-        job_id = self._get_job_id(operation)
-        job = self.instance.jobs[job_id]
-        job_completed = all(op in self.completed_operations for op in job)
-
-        if job_completed:
-            base_reward += 10.0  # Bonus for job completion
-
-        return base_reward
+        
+        return self._calculate_reward(selected_operation, start_time, end_time)
+    
+    def 
+        
+        
