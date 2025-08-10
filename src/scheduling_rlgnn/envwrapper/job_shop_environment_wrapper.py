@@ -4,8 +4,9 @@ import torch
 from typing import Dict, Any, List, Tuple
 
 from job_shop_lib import JobShopInstance, Operation
-from job_shop_lib.dispatching import Dispatcher
-from job_shop_lib.dispatching.rules import ShortestProcessingTimeRule
+
+# from job_shop_lib.dispatching import Dispatcher
+# from job_shop_lib.dispatching.rules import shortest_processing_time_rule
 
 
 class JobShopEnvironmentWrapper:
@@ -17,6 +18,7 @@ class JobShopEnvironmentWrapper:
 
     def __init__(self, instance: "JobShopInstance", max_steps: int = 1000):
 
+        # TODO: the current time approach needs to be revised to check for machine and operation availability
         self.instance = instance
         self.max_steps = max_steps
         self.current_step = 0
@@ -127,10 +129,9 @@ class JobShopEnvironmentWrapper:
         return obs, reward, terminated, truncated, info
 
     def _execute_action(self, action: int) -> float:
-        """Alternative implementation using Dispatcher from job_shop_lib."""
-
-        # Create a dispatcher with a rule
-        dispatcher = Dispatcher(ShortestProcessingTimeRule())
+        """implementation for processing the action to
+        select the operation to schedule.
+        """
 
         # Get available operations
         available_ops = self._get_available_operations()
@@ -139,17 +140,16 @@ class JobShopEnvironmentWrapper:
             return -10.0
 
         selected_operation = available_ops[action]
-
-        # Manual Scheduling
         machine_id = selected_operation.machine_id
-        start_time = max(
-            self.current_time,
-            max(
-                [op["end_time"] for op in self.machine_schedules[machine_id]],
-                default=0,
-            ),
-        )
 
+        # Find earliest start time for this operation on the machine
+        if self.machine_schedules[machine_id]:
+            last_end_time = self.machine_schedules[machine_id][-1]["end_time"]
+        else:
+            last_end_time = 0
+
+        # Start time must be >= max(global time, machine's last end time)
+        start_time = max(self.current_time, last_end_time)
         end_time = start_time + selected_operation.duration
 
         # Update state
@@ -162,7 +162,9 @@ class JobShopEnvironmentWrapper:
         )
 
         self.completed_operations.add(selected_operation)
-        self.current_time = max(self.current_time, end_time)
+        self.current_time = max(
+            self.current_time, end_time
+        )  # Update global time
 
         return self._calculate_reward(selected_operation, start_time, end_time)
 
@@ -198,3 +200,22 @@ class JobShopEnvironmentWrapper:
         """Check if all operations are completed."""
         total_operations = sum(len(job) for job in self.instance.jobs)
         return len(self.completed_operations) == total_operations
+
+    def _get_info(self) -> Dict[str, Any]:
+        """Get additional information about the current state."""
+        makespan = max(
+            [
+                max([op["end_time"] for op in schedule], default=0)
+                for schedule in self.machine_schedules.values()
+            ],
+            default=0,
+        )
+
+        return {
+            "makespan": makespan,
+            "completed_operations": len(self.completed_operations),
+            "total_operations": sum(len(job) for job in self.instance.jobs),
+            "current_time": self.current_time,
+            "completion_rate": len(self.completed_operations)
+            / sum(len(job) for job in self.instance.jobs),
+        }
