@@ -1,3 +1,12 @@
-""" """
+"""Environment wrapper module for Job Shop Scheduling with RL-GNN.
 
-# TODO: Complete the initializer for environment wrapper class
+This module provides wrapper classes for interfacing between Job Shop Scheduling
+instances and reinforcement learning algorithms using graph neural networks.
+"""
+
+from .job_shop_environment_wrapper import JobShopEnvironmentWrapper
+
+__all__ = ["JobShopEnvironmentWrapper"]
+
+# Version info
+__version__ = "0.1.0"
