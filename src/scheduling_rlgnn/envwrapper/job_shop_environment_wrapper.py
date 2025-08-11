@@ -1,12 +1,8 @@
 import gymnasium as gym
 import numpy as np
-import torch
 from typing import Dict, Any, List, Tuple
 
 from job_shop_lib import JobShopInstance, Operation
-
-# from job_shop_lib.dispatching import Dispatcher
-# from job_shop_lib.dispatching.rules import shortest_processing_time_rule
 
 
 class JobShopEnvironmentWrapper:
