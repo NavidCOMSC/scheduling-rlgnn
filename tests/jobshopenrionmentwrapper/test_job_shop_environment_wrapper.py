@@ -41,3 +41,27 @@ def test_create_graph_observation(minimal_job_shop_instance):
     assert action_mask.sum() == 2
     assert action_mask[0] and action_mask[1]  # First two operations available
     assert not action_mask[2:].any()  # Rest should be False
+
+
+# Test for step method
+def test_step_feasible_parameters(minimal_job_shop_instance):
+    """Tests that step returns feasible parameters with valid actions."""
+    env = JobShopEnvironmentWrapper(minimal_job_shop_instance)
+    env.reset()
+
+    # Take a step with a valid action (index 0)
+    obs, reward, terminated, truncated, info = env.step(0)
+
+    # Check parameter types and boundaries
+    assert isinstance(obs, dict)
+    assert "obs" in obs and "action_mask" in obs
+    assert isinstance(reward, float)
+    assert isinstance(terminated, bool)
+    assert isinstance(truncated, bool)
+    assert isinstance(info, dict)
+
+    # Check values are within expected ranges
+    assert not terminated  # Shouldn't be terminated after first step
+    assert not truncated  # Shouldn't be truncated at step 1
+    assert info["completed_operations"] == 1
+    assert info["completion_rate"] == 0.25  # 1/4 operations completed
