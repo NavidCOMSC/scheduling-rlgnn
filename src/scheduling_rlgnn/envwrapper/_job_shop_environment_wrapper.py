@@ -7,9 +7,10 @@ from job_shop_lib import JobShopInstance, Operation
 class JobShopEnvironmentWrapper:
     # TODO: Add a new doscstring after the full class implementation
     """
-    RLModule implementation for Job Shop Scheduling using Graph Neural Networks.
-    Uses the new RLLib API stack.
-    Uses per-job and per-machine availability times instead of global current_time.
+    RLModule implementation for Job Shop Scheduling using Graph
+    Neural Networks. Uses the new RLLib API stack.
+    Uses per-job and per-machine availability times instead of
+    global current_time.
     """
 
     def __init__(self, instance: "JobShopInstance", max_steps: int = 1000):
@@ -108,7 +109,8 @@ class JobShopEnvironmentWrapper:
     def step(
         self, action: int
     ) -> Tuple[Dict[str, Any], float, bool, bool, Dict[str, Any]]:
-        """Execute action and return next observation, reward, done flags, and info."""
+        """Execute action and return next observation, reward,
+        done flags, and info."""
         self.current_step += 1
 
         # Execute action using Job Shop Lib
@@ -169,7 +171,8 @@ class JobShopEnvironmentWrapper:
         self, operation: Operation, end_time: float
     ) -> float:
         """Calculate reward for scheduling an operation."""
-        # Simple reward: negative of completion time (encourages earlier completion)
+        # Simple reward: negative of completion time
+        # (encourages earlier completion)
         base_reward = -end_time
 
         # Check if this completes a job
