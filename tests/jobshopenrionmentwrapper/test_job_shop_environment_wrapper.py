@@ -28,8 +28,8 @@ def test_create_graph_observation(minimal_job_shop_instance):
     # Validate observation array properties
     obs_array = obs_dict["obs"]
     assert isinstance(obs_array, np.ndarray)
-    assert obs_array.dtype == np.float32
-    assert obs_array.shape == (64 * 4,)  # 64 nodes * 4 features
+    assert obs_array.dtype == np.float64
+    assert obs_array.shape == (64 * 3,)  # 64 nodes * 3 features
 
     # Validate action mask properties
     action_mask = obs_dict["action_mask"]
