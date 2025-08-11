@@ -24,3 +24,11 @@ def initialized_environment_fixture(job_shop_environment_wrapper):
     """Provides a pre-initialized environment (after reset)."""
     job_shop_environment_wrapper.reset()
     return job_shop_environment_wrapper
+
+
+@pytest.fixture(name="environment_after_step")
+def environment_after_step_fixture(initialized_environment):
+    """Provides an environment after one valid step has been taken."""
+    # Take a valid action (index 0)
+    initialized_environment.step(0)
+    return initialized_environment
