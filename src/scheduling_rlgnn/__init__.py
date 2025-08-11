@@ -10,10 +10,10 @@ __email__ = "amir.navid.rahimi@googlemail.com"
 from . import envwrapper
 from . import models
 
-from .envwrapper._job_shop_environment_wrapper import JobShopEnvironmentWrapper
+# from .envwrapper._job_shop_environment_wrapper import JobShopEnvironmentWrapper
 
 __all__ = [
     "envwrapper",
     "models",
-    "JobShopEnvironmentWrapper",
+    # "JobShopEnvironmentWrapper",
 ]
