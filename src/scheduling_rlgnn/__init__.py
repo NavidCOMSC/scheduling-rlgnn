@@ -7,5 +7,13 @@ __version__ = "0.1.0"
 __author__ = "Navid Rahimi"
 __email__ = "amir.navid.rahimi@googlemail.com"
 
-from .envwrapper import *
-from .models import *
+from . import envwrapper
+from . import models
+
+from .envwrapper._job_shop_environment_wrapper import JobShopEnvironmentWrapper
+
+__all__ = [
+    "envwrapper",
+    "models",
+    "JobShopEnvironmentWrapper",
+]
