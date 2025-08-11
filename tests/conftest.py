@@ -40,3 +40,14 @@ def environment_with_completed_operation_fixture(initialized_environment):
     # Execute a valid action
     initialized_environment._execute_action(0)
     return initialized_environment
+
+
+@pytest.fixture(name="larger_job_shop_instance")
+def larger_job_shop_instance_fixture():
+    """Creates a larger job shop instance for more complex testing."""
+    jobs = [
+        [Operation(0, 5), Operation(1, 3), Operation(2, 4)],
+        [Operation(1, 2), Operation(2, 6), Operation(0, 3)],
+        [Operation(2, 4), Operation(0, 3), Operation(1, 5)],
+    ]
+    return JobShopInstance(jobs=jobs, num_machines=3, name="LargerInstance")
