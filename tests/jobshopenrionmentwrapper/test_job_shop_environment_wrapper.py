@@ -65,3 +65,22 @@ def test_step_feasible_parameters(minimal_job_shop_instance):
     assert not truncated  # Shouldn't be truncated at step 1
     assert info["completed_operations"] == 1
     assert info["completion_rate"] == 0.25  # 1/4 operations completed
+
+
+# Test for _execute_action method
+def test_execute_action_output(minimal_job_shop_instance):
+    """Tests _execute_action returns viable rewards and updates state."""
+    env = JobShopEnvironmentWrapper(minimal_job_shop_instance)
+    env.reset()
+
+    # Test valid action
+    reward = env._execute_action(0)
+    assert isinstance(reward, float)
+
+    # Check state was updated
+    assert len(env.completed_operations) == 1
+    assert env.job_available_time[0] > 0  # Job 0 availability time updated
+
+    # Test invalid action (out of bounds)
+    invalid_action_reward = env._execute_action(100)
+    assert invalid_action_reward == -10.0  # Expected penalty
