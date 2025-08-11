@@ -5,9 +5,9 @@ Shop Scheduling instances and reinforcement learning algorithms
 using graph neural networks.
 """
 
-from ._job_shop_environment_wrapper import JobShopEnvironmentWrapper
+# from ._job_shop_environment_wrapper import JobShopEnvironmentWrapper
 
-__all__ = ["JobShopEnvironmentWrapper"]
+# __all__ = ["JobShopEnvironmentWrapper"]
 
 # Version info
-__version__ = "0.1.0"
+# __version__ = "0.1.0"
