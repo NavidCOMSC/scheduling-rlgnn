@@ -11,3 +11,9 @@ def minimal_job_shop_instance_fixture():
         [Operation(1, duration=2), Operation(0, duration=4)],
     ]
     return JobShopInstance(jobs=jobs, num_machines=2, name="MinimalInstance")
+
+
+@pytest.fixture(name="job_shop_environment_wrapper")
+def job_shop_environment_wrapper_fixture(minimal_job_shop_instance):
+    """Provides a JobShopEnvironmentWrapper instance for testing."""
+    return JobShopEnvironmentWrapper(minimal_job_shop_instance)
