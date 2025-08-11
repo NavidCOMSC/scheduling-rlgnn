@@ -17,3 +17,10 @@ def minimal_job_shop_instance_fixture():
 def job_shop_environment_wrapper_fixture(minimal_job_shop_instance):
     """Provides a JobShopEnvironmentWrapper instance for testing."""
     return JobShopEnvironmentWrapper(minimal_job_shop_instance)
+
+
+@pytest.fixture(name="initialized_environment")
+def initialized_environment_fixture(job_shop_environment_wrapper):
+    """Provides a pre-initialized environment (after reset)."""
+    job_shop_environment_wrapper.reset()
+    return job_shop_environment_wrapper
