@@ -2,25 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import (
-    GCNConv,
     GATConv,
-    GraphConv,
-    SAGEConv,
     global_mean_pool,
     global_max_pool,
     global_add_pool,
     BatchNorm,
-    LayerNorm,
 )
-from torch_geometric.data import Data, Batch
-import numpy as np
-from typing import (
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-)  # will remove them later to match typing of the latest Python versions
 
 
 class GraphAttentionNetwork(nn.Module):
@@ -104,8 +91,8 @@ class GraphAttentionNetwork(nn.Module):
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
-        edge_attr: Optional[torch.Tensor] = None,
-        batch: Optional[torch.Tensor] = None,
+        edge_attr: torch.Tensor | None = None,
+        batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for the Graph Attention Network.
