@@ -2,17 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import (
-    GCNConv,
-    GATConv,
     GraphConv,
-    SAGEConv,
     global_mean_pool,
-    global_max_pool,
-    global_add_pool,
-    BatchNorm,
-    LayerNorm,
 )
-from typing import Dict, List, Optional, Tuple, Union
 
 
 class HierarchicalGNN(nn.Module):
