@@ -191,3 +191,28 @@ class MultiScaleGNN(nn.Module):
             upsampled = torch.cat([upsampled, x_coarse[:remainder]], dim=0)
 
         return upsampled
+
+    def _attention_aggregate(
+        self, scale_outputs: List[torch.Tensor]
+    ) -> torch.Tensor:
+        """Aggregate scale outputs using attention mechanism."""
+        # Stack outputs along scale dimension
+        stacked = torch.stack(scale_outputs, dim=1)
+
+        # Apply self-attention across scales
+        attended, _ = self.scale_attention(stacked, stacked, stacked)
+
+        # Average across scales
+        return attended.mean(dim=1)
+
+    def _weighted_aggregate(
+        self, scale_outputs: List[torch.Tensor]
+    ) -> torch.Tensor:
+        """Aggregate scale outputs using learned weights."""
+        weights = F.softmax(self.scale_weights, dim=0)
+
+        weighted_sum = torch.zeros_like(scale_outputs[0])
+        for i, output in enumerate(scale_outputs):
+            weighted_sum += weights[i] * output
+
+        return weighted_sum
