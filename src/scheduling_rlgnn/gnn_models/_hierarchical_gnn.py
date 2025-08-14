@@ -9,8 +9,10 @@ from torch_geometric.nn import (
 
 class HierarchicalGNN(nn.Module):
     """
-    Hierarchical Graph Neural Network that captures both local and global patterns.
-    Processes job-level and machine-level representations separately then combines them.
+    Hierarchical Graph Neural Network that captures both
+    local and global patterns.
+    Processes job-level and machine-level representations
+    separately then combines them.
     """
 
     def __init__(
@@ -80,9 +82,10 @@ class HierarchicalGNN(nn.Module):
         Args:
             x (torch.Tensor): Node features.
             edge_index (torch.Tensor): Graph connectivity.
-            edge_attr (torch.Tensor | None, optional): Edge features. Defaults to None.
-            batch (torch.Tensor | None, optional): Batch vector. Defaults to None.
-            node_types (torch.Tensor | None, optional): Node types. Defaults to None.
+            edge_attr (torch.Tensor | None, optional): Edge
+            features. Defaults to None. batch (torch.Tensor | None,
+            optional): Batch vector. Defaults to None. node_types
+            (torch.Tensor | None, optional): Node types. Defaults to None.
         """
 
         if node_types is None:
