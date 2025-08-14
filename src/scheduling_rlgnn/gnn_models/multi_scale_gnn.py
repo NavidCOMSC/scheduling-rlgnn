@@ -141,3 +141,53 @@ class MultiScaleGNN(nn.Module):
         x_combined = self.final_proj(x_combined)
 
         return x_combined
+
+    def _coarsen_graph(
+        self, x: torch.Tensor, edge_index: torch.Tensor, scale: int
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Coarsen graph for higher-scale processing."""
+        coarsening_ratio = 2**scale
+        num_nodes = x.size(0)
+
+        # Simple node clustering by grouping consecutive nodes
+        cluster_size = max(1, num_nodes // (num_nodes // coarsening_ratio))
+
+        coarse_x = []
+        coarse_edge_list = []
+        for i in range(0, num_nodes, cluster_size):
+            end_idx = min(i + cluster_size, num_nodes)
+            cluster_nodes = torch.arange(i, end_idx, device=x.device)
+
+            # Pool node features
+            pooled_features = x[cluster_nodes].mean(dim=0)
+            coarse_x.append(pooled_features)
+
+        coarse_x = torch.stack(coarse_x)
+
+        # Create coarse edges (simplified)
+        num_coarse_nodes = coarse_x.size(0)
+        coarse_edge_index = torch.combinations(
+            torch.arange(num_coarse_nodes), r=2
+        ).t()
+
+        return coarse_x, coarse_edge_index
+
+    def _upsample_to_original(
+        self, x_coarse: torch.Tensor, target_size: int
+    ) -> torch.Tensor:
+        """Upsample coarse features back to original graph size."""
+        coarse_size = x_coarse.size(0)
+
+        if coarse_size == target_size:
+            return x_coarse
+
+        # Simple upsampling by repetition
+        repeat_factor = target_size // coarse_size
+        remainder = target_size % coarse_size
+
+        upsampled = x_coarse.repeat_interleave(repeat_factor, dim=0)
+
+        if remainder > 0:
+            upsampled = torch.cat([upsampled, x_coarse[:remainder]], dim=0)
+
+        return upsampled
