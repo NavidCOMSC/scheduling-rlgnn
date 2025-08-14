@@ -101,7 +101,9 @@ class GraphTransformer(nn.Module):
             x = x.view(batch_size, num_nodes, -1) + pos_enc
 
         # Encode graph structure information
-        struct_info = self._encode_graph_structure(edge_index, x.shape)
+        struct_info = self._encode_graph_structure(
+            edge_index, (batch_size, num_nodes, x.size(-1))
+        )
         x = x + struct_info
 
         # Apply dropout
