@@ -11,8 +11,8 @@ from torch_geometric.nn import (
 
 class MultiScaleGNN(nn.Module):
     """
-    Multi-scale Graph Neural Network that processes the graph at different scales
-    and combines information across scales.
+    Multi-scale Graph Neural Network that processes the graph at
+    different scales and combines information across scales.
     """
 
     def __init__(
