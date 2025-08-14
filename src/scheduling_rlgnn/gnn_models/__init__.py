@@ -1,5 +1,10 @@
 """GNN model architectures."""
 
+from ._graph_attention_network import GraphAttentionNetwork
+from ._graph_transformer import GraphTransformer
+from ._hierarchical_gnn import HierarchicalGNN
+from ._multi_scale_gnn import MultiScaleGNN
+
 """
 This package provides various Graph Neural Network (GNN) model 
 architectures for use in graph-based learning tasks.
@@ -17,12 +22,6 @@ information at multiple graph scales.
 These models can be imported directly from this package for 
 use in graph learning pipelines.
 """
-
-from ._graph_attention_network import GraphAttentionNetwork
-from ._graph_transformer import GraphTransformer
-from ._hierarchical_gnn import HierarchicalGNN
-from ._multi_scale_gnn import MultiScaleGNN
-
 __all__ = [
     "GraphAttentionNetwork",
     "GraphTransformer",
