@@ -2,19 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import (
-    GCNConv,
     GATConv,
     GraphConv,
     SAGEConv,
-    global_mean_pool,
-    global_max_pool,
-    global_add_pool,
-    BatchNorm,
     LayerNorm,
 )
-from torch_geometric.data import Data, Batch
-from typing import Dict, List, Optional, Tuple, Union
-import numpy as np
 
 
 class MultiScaleGNN(nn.Module):
@@ -86,8 +78,8 @@ class MultiScaleGNN(nn.Module):
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
-        edge_attr: Optional[torch.Tensor] = None,
-        batch: Optional[torch.Tensor] = None,
+        edge_attr: torch.Tensor | None = None,
+        batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Forward pass through multi-scale GNN."""
 
@@ -155,8 +147,8 @@ class MultiScaleGNN(nn.Module):
         x: torch.Tensor,
         edge_index: torch.Tensor,
         scale: int,
-        batch: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+        batch: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """Coarsen graph for higher-scale processing."""
         coarsening_ratio = 2**scale
         num_nodes = x.size(0)
@@ -248,8 +240,8 @@ class MultiScaleGNN(nn.Module):
         self,
         x_coarse: torch.Tensor,
         target_size: int,
-        original_batch: Optional[torch.Tensor] = None,
-        coarse_batch: Optional[torch.Tensor] = None,
+        original_batch: torch.Tensor | None = None,
+        coarse_batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Upsample coarse features back to original graph size."""
         coarse_size = x_coarse.size(0)
@@ -301,7 +293,7 @@ class MultiScaleGNN(nn.Module):
             return upsampled
 
     def _attention_aggregate(
-        self, scale_outputs: List[torch.Tensor]
+        self, scale_outputs: list[torch.Tensor]
     ) -> torch.Tensor:
         """Aggregate scale outputs using attention mechanism."""
         # Stack outputs along scale dimension
@@ -314,7 +306,7 @@ class MultiScaleGNN(nn.Module):
         return attended.mean(dim=1)
 
     def _weighted_aggregate(
-        self, scale_outputs: List[torch.Tensor]
+        self, scale_outputs: list[torch.Tensor]
     ) -> torch.Tensor:
         """Aggregate scale outputs using learned weights."""
         weights = F.softmax(self.scale_weights, dim=0)
