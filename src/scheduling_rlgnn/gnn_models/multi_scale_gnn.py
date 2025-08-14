@@ -104,14 +104,20 @@ class MultiScaleGNN(nn.Module):
 
             # Apply coarsening for higher scales
             if scale > 0:
-                x_scale, edge_index_scale = self._coarsen_graph(
-                    x_scale, edge_index, scale
+                x_scale, edge_index_scale, batch_scale = self._coarsen_graph(
+                    x_scale, edge_index, scale, batch
                 )
             else:
                 edge_index_scale = edge_index
+                batch_scale = batch
 
             # Apply GNN layers for this scale
-            for layer in scale_layers:
+            if isinstance(scale_layers, nn.ModuleList):
+                layers_iter = scale_layers
+            else:
+                layers_iter = [scale_layers]
+
+            for layer in layers_iter:
                 if isinstance(layer, GATConv):
                     x_scale = layer(x_scale, edge_index_scale)
                 else:
@@ -124,7 +130,9 @@ class MultiScaleGNN(nn.Module):
 
             # Upsample back to original resolution if needed
             if scale > 0:
-                x_scale = self._upsample_to_original(x_scale, x.size(0))
+                x_scale = self._upsample_to_original(
+                    x_scale, x.size(0), batch, batch_scale
+                )
 
             scale_outputs.append(x_scale)
 
@@ -143,8 +151,12 @@ class MultiScaleGNN(nn.Module):
         return x_combined
 
     def _coarsen_graph(
-        self, x: torch.Tensor, edge_index: torch.Tensor, scale: int
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        scale: int,
+        batch: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Coarsen graph for higher-scale processing."""
         coarsening_ratio = 2**scale
         num_nodes = x.size(0)
@@ -153,27 +165,91 @@ class MultiScaleGNN(nn.Module):
         cluster_size = max(1, num_nodes // (num_nodes // coarsening_ratio))
 
         coarse_x = []
-        coarse_edge_list = []
-        for i in range(0, num_nodes, cluster_size):
-            end_idx = min(i + cluster_size, num_nodes)
-            cluster_nodes = torch.arange(i, end_idx, device=x.device)
+        coarse_batch = []
+        node_mapping = {}
 
-            # Pool node features
-            pooled_features = x[cluster_nodes].mean(dim=0)
-            coarse_x.append(pooled_features)
+        if batch is not None:
+            # Handle batched graphs
+            unique_batches = batch.unique()
+            coarse_node_idx = 0
+
+            for batch_id in unique_batches:
+                batch_mask = batch == batch_id
+                batch_nodes = torch.where(batch_mask)[0]
+                batch_x = x[batch_mask]
+
+                for i in range(0, len(batch_nodes), cluster_size):
+                    end_idx = min(i + cluster_size, len(batch_nodes))
+                    cluster_indices = batch_nodes[i:end_idx]
+
+                    # Map original nodes to coarse node
+                    for orig_idx in cluster_indices:
+                        node_mapping[orig_idx.item()] = coarse_node_idx
+
+                    # Pool node features
+                    pooled_features = batch_x[i:end_idx].mean(dim=0)
+                    coarse_x.append(pooled_features)
+                    coarse_batch.append(batch_id)
+                    coarse_node_idx += 1
+
+            coarse_batch = torch.tensor(coarse_batch, device=x.device)
+        else:
+            # Handle single graph
+            coarse_node_idx = 0
+            for i in range(0, num_nodes, cluster_size):
+                end_idx = min(i + cluster_size, num_nodes)
+                cluster_indices = torch.arange(i, end_idx, device=x.device)
+
+                # Map original nodes to coarse node
+                for orig_idx in cluster_indices:
+                    node_mapping[orig_idx.item()] = coarse_node_idx
+
+                # Pool node features
+                pooled_features = x[cluster_indices].mean(dim=0)
+                coarse_x.append(pooled_features)
+                coarse_node_idx += 1
+
+        coarse_batch = None
 
         coarse_x = torch.stack(coarse_x)
 
-        # Create coarse edges (simplified)
-        num_coarse_nodes = coarse_x.size(0)
-        coarse_edge_index = torch.combinations(
-            torch.arange(num_coarse_nodes), r=2
-        ).t()
+        # Create coarse edges based on original edge connectivity
+        coarse_edge_set = set()
+        for i in range(edge_index.size(1)):
+            src, dst = edge_index[0, i].item(), edge_index[1, i].item()
+            coarse_src = node_mapping.get(src)
+            coarse_dst = node_mapping.get(dst)
 
-        return coarse_x, coarse_edge_index
+            if (
+                coarse_src is not None
+                and coarse_dst is not None
+                and coarse_src != coarse_dst
+            ):
+                coarse_edge_set.add((coarse_src, coarse_dst))
+                coarse_edge_set.add((coarse_dst, coarse_src))  # Undirected
+
+        if coarse_edge_set:
+            coarse_edges = list(coarse_edge_set)
+            coarse_edge_index = torch.tensor(coarse_edges, device=x.device).t()
+        else:
+            # Create coarse edges (simplified graph)
+            num_coarse_nodes = coarse_x.size(0)
+            coarse_edge_index = torch.combinations(
+                torch.arange(num_coarse_nodes, device=coarse_x.device), r=2
+            ).t()
+            # Make undirected
+            coarse_edge_index = torch.cat(
+                [coarse_edge_index, coarse_edge_index.flip(0)], dim=1
+            )
+
+        return coarse_x, coarse_edge_index, coarse_batch
 
     def _upsample_to_original(
-        self, x_coarse: torch.Tensor, target_size: int
+        self,
+        x_coarse: torch.Tensor,
+        target_size: int,
+        original_batch: Optional[torch.Tensor] = None,
+        coarse_batch: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Upsample coarse features back to original graph size."""
         coarse_size = x_coarse.size(0)
@@ -181,16 +257,48 @@ class MultiScaleGNN(nn.Module):
         if coarse_size == target_size:
             return x_coarse
 
-        # Simple upsampling by repetition
-        repeat_factor = target_size // coarse_size
-        remainder = target_size % coarse_size
+        if original_batch is not None and coarse_batch is not None:
+            # Handle batched upsampling
+            upsampled = torch.zeros(
+                target_size, x_coarse.size(1), device=x_coarse.device
+            )
 
-        upsampled = x_coarse.repeat_interleave(repeat_factor, dim=0)
+            for batch_id in original_batch.unique():
+                orig_mask = original_batch == batch_id
+                coarse_mask = coarse_batch == batch_id
 
-        if remainder > 0:
-            upsampled = torch.cat([upsampled, x_coarse[:remainder]], dim=0)
+                orig_count = orig_mask.sum().item()
+                coarse_count = coarse_mask.sum().item()
 
-        return upsampled
+                if coarse_count > 0:
+                    coarse_features = x_coarse[coarse_mask]
+                    repeat_factor = orig_count // coarse_count
+                    remainder = orig_count % coarse_count
+
+                    upsampled_batch = coarse_features.repeat_interleave(
+                        repeat_factor, dim=0
+                    )
+                    if remainder > 0:
+                        upsampled_batch = torch.cat(
+                            [upsampled_batch, coarse_features[:remainder]],
+                            dim=0,
+                        )
+
+                    upsampled[orig_mask] = upsampled_batch
+
+            return upsampled
+        else:
+
+            # Simple upsampling by repetition
+            repeat_factor = target_size // coarse_size
+            remainder = target_size % coarse_size
+
+            upsampled = x_coarse.repeat_interleave(repeat_factor, dim=0)
+
+            if remainder > 0:
+                upsampled = torch.cat([upsampled, x_coarse[:remainder]], dim=0)
+
+            return upsampled
 
     def _attention_aggregate(
         self, scale_outputs: List[torch.Tensor]
