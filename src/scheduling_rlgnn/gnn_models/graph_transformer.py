@@ -1,20 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import (
-    GCNConv,
-    GATConv,
-    GraphConv,
-    SAGEConv,
-    global_mean_pool,
-    global_max_pool,
-    global_add_pool,
-    BatchNorm,
-    LayerNorm,
-)
-from torch_geometric.data import Data, Batch
-from typing import Dict, List, Optional, Tuple, Union
-import numpy as np
 
 
 class GraphTransformer(nn.Module):
@@ -68,7 +54,7 @@ class GraphTransformer(nn.Module):
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
-        batch: Optional[torch.Tensor] = None,
+        batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Forward pass through Graph Transformer."""
 
@@ -123,7 +109,7 @@ class GraphTransformer(nn.Module):
         return self.output_proj(x)
 
     def _encode_graph_structure(
-        self, edge_index: torch.Tensor, shape: Tuple[int, int, int]
+        self, edge_index: torch.Tensor, shape: tuple[int, int, int]
     ) -> torch.Tensor:
         """Encode graph connectivity as structural features."""
         batch_size, num_nodes, hidden_dim = shape
@@ -155,7 +141,7 @@ class GraphTransformer(nn.Module):
 
     def _create_attention_mask(
         self, edge_index: torch.Tensor, num_nodes: int, batch_size: int
-    ) -> Optional[torch.Tensor]:
+    ) -> torch.Tensor | None:
         """Create attention mask to respect graph structure."""
         # At the first instance allows for the full connected network
         # it can be modified to select specific edges or nodes
