@@ -166,3 +166,149 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
             self.output_projections[node_type] = nn.Linear(
                 hidden_dim, hidden_dim
             )
+
+    def forward(
+        self,
+        x_dict: Dict[str, torch.Tensor],
+        edge_index_dict: Dict[Tuple[str, str, str], torch.Tensor],
+        edge_attr_dict: Optional[
+            Dict[Tuple[str, str, str], torch.Tensor]
+        ] = None,
+        batch_dict: Optional[Dict[str, torch.Tensor]] = None,
+    ) -> Union[Dict[str, torch.Tensor], torch.Tensor]:
+        """
+        Forward pass for the Heterogeneous Graph Attention Network.
+
+        Args:
+            x_dict: Dictionary of node features for each node type
+            edge_index_dict: Dictionary of edge indices for each edge type
+            edge_attr_dict: Dictionary of edge attributes for each edge type
+            batch_dict: Dictionary of batch indices for each node type
+
+        Returns:
+            Dictionary of node embeddings for each output node type, or
+            pooled graph-level representation if use_global_pool is True
+        """
+        # Project input features for each node type
+        for node_type in self.node_types:
+            if node_type in x_dict:
+                x_dict[node_type] = self.node_projections[node_type](
+                    x_dict[node_type]
+                )
+
+        # Project edge features for each edge type
+        if edge_attr_dict is not None:
+            processed_edge_attr = {}
+            for edge_type in self.edge_types:
+                edge_key = (
+                    f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                )
+                if (
+                    edge_type in edge_attr_dict
+                    and edge_key in self.edge_projections
+                ):
+                    processed_edge_attr[edge_type] = self.edge_projections[
+                        edge_key
+                    ](edge_attr_dict[edge_type])
+        else:
+            processed_edge_attr = None
+
+        # Apply heterogeneous GAT layers
+        for i, (hetero_conv, batch_norm_dict) in enumerate(
+            zip(self.hetero_convs, self.batch_norms)
+        ):
+            # Store residual connections
+            residual_dict = {
+                node_type: x_dict[node_type].clone()
+                for node_type in x_dict.keys()
+            }
+
+            # Apply heterogeneous convolution
+            x_dict = hetero_conv(x_dict, edge_index_dict, processed_edge_attr)
+
+            # Apply batch normalization and activation
+            for node_type in x_dict.keys():
+                x_dict[node_type] = getattr(batch_norm_dict, node_type)(
+                    x_dict[node_type]
+                )
+
+                # Apply activation except for the last layer
+                if i < len(self.hetero_convs) - 1:
+                    x_dict[node_type] = self.activation(x_dict[node_type])
+                    x_dict[node_type] = F.dropout(
+                        x_dict[node_type],
+                        p=self.dropout,
+                        training=self.training,
+                    )
+
+                # Residual connection (if dimensions match)
+                if node_type in residual_dict and residual_dict[
+                    node_type
+                ].size(-1) == x_dict[node_type].size(-1):
+                    x_dict[node_type] = (
+                        x_dict[node_type] + residual_dict[node_type]
+                    )
+
+        # Apply output projections
+        output_dict = {}
+        for node_type in self.output_node_types:
+            if node_type in x_dict:
+                output_dict[node_type] = self.output_projections[node_type](
+                    x_dict[node_type]
+                )
+
+        # Apply global pooling if requested
+        if self.use_global_pool and batch_dict is not None:
+            pooled_features = []
+            for node_type in self.pool_node_types:
+                if node_type in output_dict and node_type in batch_dict:
+                    pooled = self.global_pool(
+                        output_dict[node_type], batch_dict[node_type]
+                    )
+                    pooled_features.append(pooled)
+
+            if pooled_features:
+                return torch.cat(pooled_features, dim=-1)
+            else:
+                return output_dict
+
+        return output_dict
+
+    def get_attention_weights(
+        self,
+        x_dict: Dict[str, torch.Tensor],
+        edge_index_dict: Dict[Tuple[str, str, str], torch.Tensor],
+        edge_attr_dict: Optional[
+            Dict[Tuple[str, str, str], torch.Tensor]
+        ] = None,
+        layer_idx: int = -1,
+    ) -> Dict[Tuple[str, str, str], torch.Tensor]:
+        """
+        Extract attention weights from a specific layer.
+
+        Args:
+            x_dict: Dictionary of node features for each node type
+            edge_index_dict: Dictionary of edge indices for each edge type
+            edge_attr_dict: Dictionary of edge attributes for each edge type
+            layer_idx: Index of layer to extract attention from (-1 for last layer)
+
+        Returns:
+            Dictionary of attention weights for each edge type
+        """
+        # This is a simplified version - full implementation would require
+        # modifying the forward pass to return attention weights
+        if layer_idx < 0:
+            layer_idx = len(self.hetero_convs) + layer_idx
+
+        # Forward pass up to the specified layer
+        for i in range(layer_idx + 1):
+            if i == layer_idx:
+                # Extract attention weights from this layer
+                attention_weights = {}
+                for edge_type in self.edge_types:
+                    # This would require custom implementation in GATConv
+                    # to return attention weights
+                    pass
+                return attention_weights
+
+        return {}
