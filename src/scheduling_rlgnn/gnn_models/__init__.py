@@ -3,7 +3,7 @@
 from ._heterogeneous_graph_attention_network import (
     HeterogeneousGraphAttentionNetwork,
 )
-from ._graph_transformer import GraphTransformer
+from ._hetero_graph_transformer import HeteroGraphTransformer
 from ._hierarchical_gnn import HierarchicalGNN
 from ._multi_scale_gnn import MultiScaleGNN
 
@@ -26,7 +26,7 @@ use in graph learning pipelines.
 """
 __all__ = [
     "HeterogeneousGraphAttentionNetwork",
-    "GraphTransformer",
+    "HeteroGraphTransformer",
     "HierarchicalGNN",
     "MultiScaleGNN",
 ]
