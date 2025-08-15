@@ -295,20 +295,157 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
         Returns:
             Dictionary of attention weights for each edge type
         """
-        # This is a simplified version - full implementation would require
-        # modifying the forward pass to return attention weights
         if layer_idx < 0:
             layer_idx = len(self.hetero_convs) + layer_idx
 
-        # Forward pass up to the specified layer
+        if layer_idx >= len(self.hetero_convs) or layer_idx < 0:
+            raise ValueError(
+                f"Invalid layer_idx: {layer_idx}. Must be in range [0, {len(self.hetero_convs)-1}]"
+            )
+
+        # Project input features for each node type
+        current_x_dict = {}
+        for node_type in self.node_types:
+            if node_type in x_dict:
+                current_x_dict[node_type] = self.node_projections[node_type](
+                    x_dict[node_type]
+                )
+
+        # Project edge features for each edge type
+        processed_edge_attr = None
+        if edge_attr_dict is not None:
+            processed_edge_attr = {}
+            for edge_type in self.edge_types:
+                edge_key = (
+                    f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                )
+                if (
+                    edge_type in edge_attr_dict
+                    and edge_key in self.edge_projections
+                ):
+                    processed_edge_attr[edge_type] = self.edge_projections[
+                        edge_key
+                    ](edge_attr_dict[edge_type])
+
+        # Forward pass up to the target layer
         for i in range(layer_idx + 1):
+            hetero_conv = self.hetero_convs[i]
+            batch_norm_dict = self.batch_norms[i]
+
+            # Store residual connections
+            residual_dict = {
+                node_type: current_x_dict[node_type].clone()
+                for node_type in current_x_dict.keys()
+            }
+
             if i == layer_idx:
-                # Extract attention weights from this layer
+                # Extract attention weights from the target layer
                 attention_weights = {}
+
+                # Apply each GAT conv individually to get attention weights
                 for edge_type in self.edge_types:
-                    # This would require custom implementation in GATConv
-                    # to return attention weights
-                    pass
+                    if edge_type in edge_index_dict:
+                        src_type, rel_type, dst_type = edge_type
+
+                        # Get the specific GAT convolution for this edge type
+                        gat_conv = None
+
+                        # Access the ModuleDict
+                        if hasattr(hetero_conv, "convs") and isinstance(
+                            hetero_conv.convs, nn.ModuleDict
+                        ):
+                            # Try direct access with string key
+                            edge_key = (
+                                f"{src_type}__to__{dst_type}__via__{rel_type}"
+                            )
+                            if edge_key in hetero_conv.convs:
+                                gat_conv = hetero_conv.convs[edge_key]
+                            else:
+                                # Try with other string representations
+                                edge_key_variants = [
+                                    f"{src_type}__{rel_type}__{dst_type}",
+                                    f"({src_type}, {rel_type}, {dst_type})",
+                                ]
+
+                                for variant in edge_key_variants:
+                                    if variant in hetero_conv.convs:
+                                        gat_conv = hetero_conv.convs[variant]
+                                        break
+
+                        # Get source and destination node features
+                        x_src = current_x_dict.get(src_type, None)
+                        x_dst = current_x_dict.get(dst_type, None)
+
+                        if (
+                            gat_conv is not None
+                            and x_src is not None
+                            and x_dst is not None
+                        ):
+                            # Get edge indices and attributes
+                            edge_index = edge_index_dict[edge_type]
+                            edge_attr = (
+                                processed_edge_attr.get(edge_type, None)
+                                if processed_edge_attr
+                                else None
+                            )
+
+                            # Create input tuple for GAT conv
+                            if src_type == dst_type:
+                                x_input = x_src
+                            else:
+                                x_input = (x_src, x_dst)
+
+                            # Forward pass through GAT with return_attention_weights=True
+                            try:
+                                if edge_attr is not None:
+                                    _, attention_weights[edge_type] = gat_conv(
+                                        x_input,
+                                        edge_index,
+                                        edge_attr=edge_attr,
+                                        return_attention_weights=True,
+                                    )
+                                else:
+                                    _, attention_weights[edge_type] = gat_conv(
+                                        x_input,
+                                        edge_index,
+                                        return_attention_weights=True,
+                                    )
+                            except Exception as e:
+                                # If attention extraction fails, store None
+                                attention_weights[edge_type] = None
+                        else:
+                            attention_weights[edge_type] = None
+
                 return attention_weights
+            else:
+                # Regular forward pass for layers before target
+                current_x_dict = hetero_conv(
+                    current_x_dict, edge_index_dict, processed_edge_attr
+                )
+
+                # Apply batch normalization and activation
+                for node_type in current_x_dict.keys():
+                    current_x_dict[node_type] = getattr(
+                        batch_norm_dict, node_type
+                    )(current_x_dict[node_type])
+
+                    if i < len(self.hetero_convs) - 1:
+                        current_x_dict[node_type] = self.activation(
+                            current_x_dict[node_type]
+                        )
+                        current_x_dict[node_type] = F.dropout(
+                            current_x_dict[node_type],
+                            p=self.dropout,
+                            training=self.training,
+                        )
+
+                    # Residual connection (if dimensions match)
+                    if node_type in residual_dict and residual_dict[
+                        node_type
+                    ].size(-1) == current_x_dict[node_type].size(-1):
+                        current_x_dict[node_type] = (
+                            current_x_dict[node_type]
+                            + residual_dict[node_type]
+                        )
 
         return {}
