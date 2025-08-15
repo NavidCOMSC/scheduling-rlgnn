@@ -1,0 +1,168 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_geometric.nn import (
+    HeteroConv,
+    GATConv,
+    global_mean_pool,
+    global_max_pool,
+    global_add_pool,
+    BatchNorm,
+    Linear,
+)
+from torch_geometric.data import HeteroData
+from typing import Dict, List, Optional, Union, Tuple
+
+
+class HeterogeneousGraphAttentionNetwork(nn.Module):
+    """
+    Heterogeneous Graph Attention Network for Job Shop Scheduling Problems.
+
+    Handles different node types (operations, machines, jobs) and edge types
+    (precedence, assignment, machine availability, etc.) with specialized
+    attention mechanisms for each relationship type.
+    """
+
+    def __init__(
+        self,
+        # Node type configurations
+        node_types: List[str] = ["operation", "machine", "job"],
+        node_dims: Dict[str, int] = {
+            "operation": 64,
+            "machine": 32,
+            "job": 16,
+        },
+        # Edge type configurations
+        edge_types: List[Tuple[str, str, str]] = [
+            ("operation", "precedence", "operation"),
+            ("operation", "assigned_to", "machine"),
+            ("machine", "can_process", "operation"),
+            ("job", "contains", "operation"),
+            ("operation", "belongs_to", "job"),
+        ],
+        edge_dims: Dict[Tuple[str, str, str], int] = {},
+        # Model architecture
+        hidden_dim: int = 128,
+        num_layers: int = 3,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+        activation: str = "relu",
+        # Pooling configurations
+        use_global_pool: bool = False,
+        pool_type: str = "mean",  # mean, max, or add
+        pool_node_types: List[str] = ["operation"],  # Which node types to pool
+        # Output configurations
+        output_node_types: List[str] = [
+            "operation"
+        ],  # Which node types to output
+    ):
+        super().__init__()
+
+        self.node_types = node_types
+        self.edge_types = edge_types
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        self.num_heads = num_heads
+        self.dropout = dropout
+        self.use_global_pool = use_global_pool
+        self.pool_node_types = pool_node_types
+        self.output_node_types = output_node_types
+
+        # Initialize edge dimensions if not provided
+        self.edge_dims = {}
+        for edge_type in edge_types:
+            if edge_type in edge_dims:
+                self.edge_dims[edge_type] = edge_dims[edge_type]
+            else:
+                self.edge_dims[edge_type] = 32  # default edge dimension
+
+        # Input projections for each node type
+        self.node_projections = nn.ModuleDict()
+        for node_type in node_types:
+            input_dim = node_dims.get(node_type, 64)
+            self.node_projections[node_type] = nn.Linear(input_dim, hidden_dim)
+
+        # Edge projections for each edge type
+        self.edge_projections = nn.ModuleDict()
+        for edge_type in edge_types:
+            edge_key = (
+                f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+            )
+            edge_dim = self.edge_dims[edge_type]
+            if edge_dim > 0:
+                self.edge_projections[edge_key] = nn.Linear(
+                    edge_dim, hidden_dim
+                )
+
+        # Heterogeneous convolution layers
+        self.hetero_convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
+
+        for i in range(num_layers):
+            # Create convolutions for each edge type
+            conv_dict = {}
+            for edge_type in edge_types:
+                src_type, rel_type, dst_type = edge_type
+                edge_key = f"{src_type}__to__{dst_type}__via__{rel_type}"
+
+                in_dim = hidden_dim
+                out_dim = (
+                    hidden_dim // num_heads
+                    if i < num_layers - 1
+                    else hidden_dim
+                )
+
+                # Use edge features if available
+                edge_dim = (
+                    hidden_dim if self.edge_dims[edge_type] > 0 else None
+                )
+
+                conv_dict[edge_type] = GATConv(
+                    in_channels=in_dim,
+                    out_channels=out_dim,
+                    heads=num_heads if i < num_layers - 1 else 1,
+                    dropout=dropout,
+                    edge_dim=edge_dim,
+                    concat=i < num_layers - 1,
+                )
+
+            self.hetero_convs.append(HeteroConv(conv_dict, aggr="add"))
+
+            # Batch normalization for each node type
+            bn_dict = {}
+            for node_type in node_types:
+                final_dim = (
+                    (hidden_dim // num_heads) * num_heads
+                    if i < num_layers - 1
+                    else hidden_dim
+                )
+                bn_dict[node_type] = BatchNorm(final_dim)
+            self.batch_norms.append(nn.ModuleDict(bn_dict))
+
+            # Global pooling functions
+        if use_global_pool:
+            if pool_type == "mean":
+                self.global_pool = global_mean_pool
+            elif pool_type == "max":
+                self.global_pool = global_max_pool
+            elif pool_type == "add":
+                self.global_pool = global_add_pool
+            else:
+                self.global_pool = global_mean_pool
+
+        # Activation function
+        if activation == "relu":
+            self.activation = F.relu
+        elif activation == "gelu":
+            self.activation = F.gelu
+        elif activation == "leaky_relu":
+            self.activation = F.leaky_relu
+        else:
+            self.activation = F.relu
+
+        # Output projections for specified node types
+        self.output_projections = nn.ModuleDict()
+        for node_type in output_node_types:
+            self.output_projections[node_type] = nn.Linear(
+                hidden_dim, hidden_dim
+            )
