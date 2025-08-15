@@ -274,6 +274,7 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
 
         return output_dict
 
+    # TODO will the full implementation of this method be needed?
     def get_attention_weights(
         self,
         x_dict: Dict[str, torch.Tensor],
