@@ -1,6 +1,8 @@
 """GNN model architectures."""
 
-from ._graph_attention_network import GraphAttentionNetwork
+from ._heterogeneous_graph_attention_network import (
+    HeterogeneousGraphAttentionNetwork,
+)
 from ._graph_transformer import GraphTransformer
 from ._hierarchical_gnn import HierarchicalGNN
 from ._multi_scale_gnn import MultiScaleGNN
@@ -23,7 +25,7 @@ These models can be imported directly from this package for
 use in graph learning pipelines.
 """
 __all__ = [
-    "GraphAttentionNetwork",
+    "HeterogeneousGraphAttentionNetwork",
     "GraphTransformer",
     "HierarchicalGNN",
     "MultiScaleGNN",
