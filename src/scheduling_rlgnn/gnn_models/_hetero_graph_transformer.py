@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HeteroConv, TransformerConv, Linear
-from torch_geometric.data import HeteroData
 from torch_geometric.typing import Metadata
 from typing import Dict, Any, Optional, Union
 
@@ -289,14 +288,20 @@ class HeteroGraphTransformer(nn.Module):
 
                             # Perform forward pass through the specific conv layer
                             with torch.no_grad():
-                                # output = conv((x_src, x_dst), edge_index)
-                                pass
-
-                            # Store the output or edge_index as attention proxy
-                            attention_weights[edge_type] = (
-                                edge_index  # TODO: Does the extract attention
-                            )
-                            # method will return the weights or should be scraped?
+                                # Set conv to return attention weights
+                                conv.return_attention_weights = True
+                                try:
+                                    _, (_, alpha) = conv(
+                                        (x_src, x_dst),
+                                        edge_index,
+                                        return_attention_weights=True,
+                                    )
+                                    attention_weights[edge_type] = alpha
+                                except:
+                                    # Fallback if attention extraction fails
+                                    attention_weights[edge_type] = edge_index
+                                finally:
+                                    conv.return_attention_weights = False
 
                 return attention_weights
             else:
