@@ -8,10 +8,8 @@ from torch_geometric.nn import (
     global_max_pool,
     global_add_pool,
     BatchNorm,
-    Linear,
 )
-from torch_geometric.data import HeteroData
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Union, Tuple
 
 
 class HeterogeneousGraphAttentionNetwork(nn.Module):
@@ -26,21 +24,21 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
     def __init__(
         self,
         # Node type configurations
-        node_types: List[str] = ["operation", "machine", "job"],
-        node_dims: Dict[str, int] = {
+        node_types: list[str] = ["operation", "machine", "job"],
+        node_dims: dict[str, int] = {
             "operation": 64,
             "machine": 32,
             "job": 16,
         },
         # Edge type configurations
-        edge_types: List[Tuple[str, str, str]] = [
+        edge_types: list[tuple[str, str, str]] = [
             ("operation", "precedence", "operation"),
             ("operation", "assigned_to", "machine"),
             ("machine", "can_process", "operation"),
             ("job", "contains", "operation"),
             ("operation", "belongs_to", "job"),
         ],
-        edge_dims: Dict[Tuple[str, str, str], int] = {},
+        edge_dims: dict[tuple[str, str, str], int] = {},
         # Model architecture
         hidden_dim: int = 128,
         num_layers: int = 3,
@@ -50,9 +48,9 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
         # Pooling configurations
         use_global_pool: bool = False,
         pool_type: str = "mean",  # mean, max, or add
-        pool_node_types: List[str] = ["operation"],  # Which node types to pool
+        pool_node_types: list[str] = ["operation"],  # Which node types to pool
         # Output configurations
-        output_node_types: List[str] = [
+        output_node_types: list[str] = [
             "operation"
         ],  # Which node types to output
     ):
@@ -169,13 +167,11 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
 
     def forward(
         self,
-        x_dict: Dict[str, torch.Tensor],
-        edge_index_dict: Dict[Tuple[str, str, str], torch.Tensor],
-        edge_attr_dict: Optional[
-            Dict[Tuple[str, str, str], torch.Tensor]
-        ] = None,
-        batch_dict: Optional[Dict[str, torch.Tensor]] = None,
-    ) -> Union[Dict[str, torch.Tensor], torch.Tensor]:
+        x_dict: dict[str, torch.Tensor],
+        edge_index_dict: dict[tuple[str, str, str], torch.Tensor],
+        edge_attr_dict: dict[tuple[str, str, str], torch.Tensor] | None = None,
+        batch_dict: dict[str, torch.Tensor] | None = None,
+    ) -> Union[dict[str, torch.Tensor], torch.Tensor]:
         """
         Forward pass for the Heterogeneous Graph Attention Network.
 
@@ -276,13 +272,11 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
 
     def get_attention_weights(
         self,
-        x_dict: Dict[str, torch.Tensor],
-        edge_index_dict: Dict[Tuple[str, str, str], torch.Tensor],
-        edge_attr_dict: Optional[
-            Dict[Tuple[str, str, str], torch.Tensor]
-        ] = None,
+        x_dict: dict[str, torch.Tensor],
+        edge_index_dict: dict[tuple[str, str, str], torch.Tensor],
+        edge_attr_dict: dict[tuple[str, str, str], torch.Tensor] | None = None,
         layer_idx: int = -1,
-    ) -> Dict[Tuple[str, str, str], torch.Tensor]:
+    ) -> dict[tuple[str, str, str], torch.Tensor]:
         """
         Extract attention weights from a specific layer.
 
@@ -413,7 +407,12 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                                         edge_index,
                                         return_attention_weights=True,
                                     )
-                            except:
+                            except (
+                                TypeError,
+                                ValueError,
+                                RuntimeError,
+                                AttributeError,
+                            ):
                                 # If attention extraction fails, store None
                                 attention_weights[edge_type] = None
                         else:
