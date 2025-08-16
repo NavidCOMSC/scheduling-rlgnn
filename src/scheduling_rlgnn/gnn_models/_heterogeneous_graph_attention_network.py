@@ -9,7 +9,6 @@ from torch_geometric.nn import (
     global_add_pool,
     BatchNorm,
 )
-from typing import Dict, List, Union, Tuple
 
 
 class HeterogeneousGraphAttentionNetwork(nn.Module):
@@ -171,7 +170,7 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
         edge_index_dict: dict[tuple[str, str, str], torch.Tensor],
         edge_attr_dict: dict[tuple[str, str, str], torch.Tensor] | None = None,
         batch_dict: dict[str, torch.Tensor] | None = None,
-    ) -> Union[dict[str, torch.Tensor], torch.Tensor]:
+    ) -> dict[str, torch.Tensor] | torch.Tensor:
         """
         Forward pass for the Heterogeneous Graph Attention Network.
 
