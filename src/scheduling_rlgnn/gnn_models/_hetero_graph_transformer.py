@@ -8,8 +8,9 @@ from typing import Dict, Any, Optional, Union
 
 class HeteroGraphTransformer(nn.Module):
     """
-    Heterogeneous Graph Transformer architecture that handles multiple node and edge types
-    using PyTorch Geometric's heterogeneous graph capabilities.
+    Heterogeneous Graph Transformer architecture
+    that handles multiple node and edge types using
+    PyTorch Geometric's heterogeneous graph capabilities.
     """
 
     def __init__(
@@ -297,7 +298,10 @@ class HeteroGraphTransformer(nn.Module):
                                         return_attention_weights=True,
                                     )
                                     attention_weights[edge_type] = alpha
-                                except:
+                                except Exception as e:
+                                    print(
+                                        f"Error extracting attention weights for {edge_type}: {e}"
+                                    )
                                     # Fallback if attention extraction fails
                                     attention_weights[edge_type] = edge_index
                                 finally:
