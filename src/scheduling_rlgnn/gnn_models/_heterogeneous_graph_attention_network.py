@@ -274,7 +274,6 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
 
         return output_dict
 
-    # TODO will the full implementation of this method be needed?
     def get_attention_weights(
         self,
         x_dict: Dict[str, torch.Tensor],
@@ -291,7 +290,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
             x_dict: Dictionary of node features for each node type
             edge_index_dict: Dictionary of edge indices for each edge type
             edge_attr_dict: Dictionary of edge attributes for each edge type
-            layer_idx: Index of layer to extract attention from (-1 for last layer)
+            layer_idx: Index of layer to extract attention from
+            (-1 for last layer)
 
         Returns:
             Dictionary of attention weights for each edge type
@@ -301,7 +301,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
 
         if layer_idx >= len(self.hetero_convs) or layer_idx < 0:
             raise ValueError(
-                f"Invalid layer_idx: {layer_idx}. Must be in range [0, {len(self.hetero_convs)-1}]"
+                f"Invalid layer_idx: {layer_idx}. Must be in range [0, "
+                f"{len(self.hetero_convs)-1}]"
             )
 
         # Project input features for each node type
@@ -396,7 +397,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                             else:
                                 x_input = (x_src, x_dst)
 
-                            # Forward pass through GAT with return_attention_weights=True
+                            # Forward pass through GAT
+                            # with return_attention_weights=True
                             try:
                                 if edge_attr is not None:
                                     _, attention_weights[edge_type] = gat_conv(
@@ -411,7 +413,7 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                                         edge_index,
                                         return_attention_weights=True,
                                     )
-                            except Exception as e:
+                            except:
                                 # If attention extraction fails, store None
                                 attention_weights[edge_type] = None
                         else:
