@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HeteroConv, TransformerConv, Linear
 from torch_geometric.typing import Metadata
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 
 
 class HeteroGraphTransformer(nn.Module):
@@ -32,7 +32,8 @@ class HeteroGraphTransformer(nn.Module):
 
         Args:
             metadata: Graph metadata containing node and edge types
-            node_dims: Dictionary mapping node types to their feature dimensions
+            node_dims: Dictionary mapping node types to their
+            feature dimensions
             hidden_dim: Hidden dimension size
             num_layers: Number of transformer layers
             num_heads: Number of attention heads
@@ -73,7 +74,8 @@ class HeteroGraphTransformer(nn.Module):
                     out_channels=hidden_dim,
                     heads=num_heads,
                     dropout=dropout,
-                    edge_dim=edge_dim,  # Can be modified to include edge features
+                    edge_dim=edge_dim,  # Can be modified to
+                    # exclude edge features
                     beta=True,
                     concat=False,
                 )
@@ -300,7 +302,8 @@ class HeteroGraphTransformer(nn.Module):
                                     attention_weights[edge_type] = alpha
                                 except Exception as e:
                                     print(
-                                        f"Error extracting attention weights for {edge_type}: {e}"
+                                        f"Error extracting attention"
+                                        f" weights for {edge_type}: {e}"
                                     )
                                     # Fallback if attention extraction fails
                                     attention_weights[edge_type] = edge_index
