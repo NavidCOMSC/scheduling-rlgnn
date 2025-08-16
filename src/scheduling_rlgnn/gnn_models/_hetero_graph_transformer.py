@@ -157,7 +157,8 @@ class HeteroGraphTransformer(nn.Module):
             h_new_dict = self.hetero_convs[layer_idx](
                 h_dict,
                 edge_index_dict,
-                edge_attr_dict=edge_attr_dict,  # TODO: Optional or be included?
+                edge_attr_dict=edge_attr_dict,
+                # TODO: Optional or be included?
             )
 
             # Add residual connections and layer norm
@@ -289,7 +290,8 @@ class HeteroGraphTransformer(nn.Module):
                                 else x_src
                             )
 
-                            # Perform forward pass through the specific conv layer
+                            # Perform forward pass through
+                            # the specific conv layer
                             with torch.no_grad():
                                 # Set conv to return attention weights
                                 conv.return_attention_weights = True
