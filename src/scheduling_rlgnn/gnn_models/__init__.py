@@ -4,8 +4,6 @@ from ._heterogeneous_graph_attention_network import (
     HeterogeneousGraphAttentionNetwork,
 )
 from ._hetero_graph_transformer import HeteroGraphTransformer
-from ._hierarchical_gnn import HierarchicalGNN
-from ._multi_scale_gnn import MultiScaleGNN
 
 """
 This package provides various Graph Neural Network (GNN) model
@@ -27,6 +25,4 @@ use in graph learning pipelines.
 __all__ = [
     "HeterogeneousGraphAttentionNetwork",
     "HeteroGraphTransformer",
-    "HierarchicalGNN",
-    "MultiScaleGNN",
 ]
