@@ -8,6 +8,7 @@ from torch_geometric.nn import (
     global_max_pool,
     global_add_pool,
     BatchNorm,
+    LayerNorm,
 )
 
 
@@ -91,6 +92,12 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                     edge_dim, hidden_dim
                 )
 
+        # Map edge types to their string representations
+        self.edge_type_to_key = {}
+        for edge_type in edge_types:
+            key = str(edge_type)
+            self.edge_type_to_key[edge_type] = key
+
         # Heterogeneous convolution layers
         self.hetero_convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
@@ -121,9 +128,10 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                     dropout=dropout,
                     edge_dim=edge_dim,
                     concat=i < num_layers - 1,
+                    add_self_loops=False,
                 )
 
-            self.hetero_convs.append(HeteroConv(conv_dict, aggr="add"))
+            self.hetero_convs.append(HeteroConv(conv_dict, aggr="mean"))
 
             # Batch normalization for each node type
             bn_dict = {}
@@ -133,7 +141,7 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                     if i < num_layers - 1
                     else hidden_dim
                 )
-                bn_dict[node_type] = BatchNorm(final_dim)
+                bn_dict[node_type] = LayerNorm(final_dim)
             self.batch_norms.append(nn.ModuleDict(bn_dict))
 
             # Global pooling functions
@@ -350,22 +358,23 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                             hetero_conv.convs, nn.ModuleDict
                         ):
                             # Try direct access with string key
-                            edge_key = (
-                                f"{src_type}__to__{dst_type}__via__{rel_type}"
-                            )
-                            if edge_key in hetero_conv.convs:
-                                gat_conv = hetero_conv.convs[edge_key]
-                            else:
-                                # Try with other string representations
-                                edge_key_variants = [
-                                    f"{src_type}__{rel_type}__{dst_type}",
-                                    f"({src_type}, {rel_type}, {dst_type})",
-                                ]
+                            # edge_key = (
+                            #     f"{src_type}__to__{dst_type}__via__{rel_type}"
+                            # )
+                            key_str = str(edge_type)
+                            if key_str in hetero_conv.convs:
+                                gat_conv = hetero_conv.convs[key_str]
+                            # else:
+                            #     # Try with other string representations
+                            #     edge_key_variants = [
+                            #         f"{src_type}__{rel_type}__{dst_type}",
+                            #         f"({src_type}, {rel_type}, {dst_type})",
+                            #     ]
 
-                                for variant in edge_key_variants:
-                                    if variant in hetero_conv.convs:
-                                        gat_conv = hetero_conv.convs[variant]
-                                        break
+                            #     for variant in edge_key_variants:
+                            #         if variant in hetero_conv.convs:
+                            #             gat_conv = hetero_conv.convs[variant]
+                            #             break
 
                         # Get source and destination node features
                         x_src = current_x_dict.get(src_type, None)
