@@ -1,1 +1,28 @@
 """GNN model architectures."""
+
+from ._heterogeneous_graph_attention_network import (
+    HeterogeneousGraphAttentionNetwork,
+)
+from ._hetero_graph_transformer import HeteroGraphTransformer
+
+"""
+This package provides various Graph Neural Network (GNN) model
+architectures for use in graph-based learning tasks.
+
+Available architectures:
+- GraphAttentionNetwork: Implements a GNN using attention
+mechanisms to weigh node neighbors.
+- GraphTransformer: A transformer-based model adapted for
+graph-structured data.
+- HierarchicalGNN: A hierarchical GNN that captures
+multi-level graph representations.
+- MultiScaleGNN: A GNN architecture designed to process
+information at multiple graph scales.
+
+These models can be imported directly from this package for
+use in graph learning pipelines.
+"""
+__all__ = [
+    "HeterogeneousGraphAttentionNetwork",
+    "HeteroGraphTransformer",
+]
