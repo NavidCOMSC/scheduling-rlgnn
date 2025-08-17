@@ -72,3 +72,46 @@ def test_forward_pass(hetero_data):
 
     # Check pooled output shape
     assert output.shape == (1, 128)  # Batch size 1, hidden_dim 128
+
+
+def test_attention_weights(hetero_data):
+    """Test attention weight extraction."""
+    model = HeterogeneousGraphAttentionNetwork(
+        hidden_dim=128,
+        num_layers=2,
+        num_heads=4,
+    )
+
+    # Extract data from HeteroData
+    x_dict = {
+        node_type: hetero_data[node_type].x
+        for node_type in hetero_data.node_types
+    }
+    edge_index_dict = hetero_data.edge_index_dict
+    edge_attr_dict = hetero_data.edge_attr_dict
+
+    # Get attention weights
+    attention_weights = model.get_attention_weights(
+        x_dict, edge_index_dict, edge_attr_dict, layer_idx=-1
+    )
+
+    # Check attention weights exist for each edge type
+    assert ("operation", "precedence", "operation") in attention_weights
+    assert ("operation", "assigned_to", "machine") in attention_weights
+    assert ("machine", "can_process", "operation") in attention_weights
+    assert ("job", "contains", "operation") in attention_weights
+    assert ("operation", "belongs_to", "job") in attention_weights
+
+    # Check precedence attention shape
+    assert attention_weights[("operation", "precedence", "operation")][
+        0
+    ].shape == (
+        2,
+        4,
+    )  # 2 edges, 4 heads
+    assert attention_weights[("operation", "precedence", "operation")][
+        1
+    ].shape == (
+        2,
+        1,
+    )  # 2 edges (values)
