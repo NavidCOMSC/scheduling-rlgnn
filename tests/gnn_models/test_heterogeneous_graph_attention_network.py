@@ -43,3 +43,32 @@ def hetero_data():
     data["job"].batch = torch.tensor([0])
 
     return data
+
+
+def test_forward_pass(hetero_data):
+    """Test forward pass returns correct output shapes."""
+    model = HeterogeneousGraphAttentionNetwork(
+        hidden_dim=128,
+        num_layers=2,
+        num_heads=4,
+        use_global_pool=True,
+        pool_node_types=["operation"],
+    )
+
+    # Extract data from HeteroData
+    x_dict = {
+        node_type: hetero_data[node_type].x
+        for node_type in hetero_data.node_types
+    }
+    edge_index_dict = hetero_data.edge_index_dict
+    edge_attr_dict = hetero_data.edge_attr_dict
+    batch_dict = {
+        node_type: hetero_data[node_type].batch
+        for node_type in hetero_data.node_types
+    }
+
+    # Forward pass
+    output = model(x_dict, edge_index_dict, edge_attr_dict, batch_dict)
+
+    # Check pooled output shape
+    assert output.shape == (1, 128)  # Batch size 1, hidden_dim 128
