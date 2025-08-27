@@ -2,8 +2,8 @@ import pytest
 import torch
 from torch_geometric.data import HeteroData
 
-from src.scheduling_rlgnn.gnn_models._heterogeneous_graph_attention_network import (
-    HeterogeneousGraphAttentionNetwork,
+from src.scheduling_rlgnn.gnn_models import (
+    _heterogeneous_graph_attention_network,
 )
 
 
@@ -47,7 +47,7 @@ def hetero_data():
 
 def test_forward_pass(hetero_data):
     """Test forward pass returns correct output shapes."""
-    model = HeterogeneousGraphAttentionNetwork(
+    model = _heterogeneous_graph_attention_network.HeterogeneousGraphAttentionNetwork(
         hidden_dim=128,
         num_layers=2,
         num_heads=2,
@@ -76,7 +76,7 @@ def test_forward_pass(hetero_data):
 
 def test_attention_weights(hetero_data):
     """Test attention weight extraction."""
-    model = HeterogeneousGraphAttentionNetwork(
+    model = _heterogeneous_graph_attention_network.HeterogeneousGraphAttentionNetwork(
         hidden_dim=128,
         num_layers=2,
         num_heads=2,
