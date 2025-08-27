@@ -92,12 +92,6 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                     edge_dim, hidden_dim
                 )
 
-        # Map edge types to their string representations
-        self.edge_type_to_key = {}
-        for edge_type in edge_types:
-            key = str(edge_type)
-            self.edge_type_to_key[edge_type] = key
-
         # Heterogeneous convolution layers
         self.hetero_convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
@@ -107,14 +101,23 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
             conv_dict = {}
             for edge_type in edge_types:
                 src_type, rel_type, dst_type = edge_type
+                
                 edge_key = f"{src_type}__to__{dst_type}__via__{rel_type}"
 
                 in_dim = hidden_dim
-                out_dim = (
-                    hidden_dim // num_heads
-                    if i < num_layers - 1
-                    else hidden_dim
-                )
+                # For the last layer, output should be hidden_dim with 1 head
+                # For intermediate layers, output should be hidden_dim // num_heads with num_heads
+
+                if i == num_layers - 1:
+                    # Last layer: single head, full hidden_dim output
+                    out_dim = hidden_dim
+                    heads = 1
+                    concat = False
+                else:
+                    # Intermediate layers: multiple heads, smaller output per head
+                    out_dim = hidden_dim // num_heads
+                    heads = num_heads
+                    concat = True
 
                 # Use edge features if available
                 edge_dim = (
@@ -124,10 +127,10 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                 conv_dict[edge_type] = GATConv(
                     in_channels=in_dim,
                     out_channels=out_dim,
-                    heads=num_heads if i < num_layers - 1 else 1,
+                    heads=heads,
                     dropout=dropout,
                     edge_dim=edge_dim,
-                    concat=i < num_layers - 1,
+                    concat=concat,
                     add_self_loops=False,
                 )
 
@@ -136,12 +139,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
             # Batch normalization for each node type
             bn_dict = {}
             for node_type in node_types:
-                final_dim = (
-                    (hidden_dim // num_heads) * num_heads
-                    if i < num_layers - 1
-                    else hidden_dim
-                )
-                bn_dict[node_type] = LayerNorm(final_dim)
+                # All layers should output hidden_dim after head concatenation/single head
+                bn_dict[node_type] = LayerNorm(hidden_dim)
             self.batch_norms.append(nn.ModuleDict(bn_dict))
 
             # Global pooling functions
@@ -354,27 +353,40 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                         gat_conv = None
 
                         # Access the ModuleDict
-                        if hasattr(hetero_conv, "convs") and isinstance(
-                            hetero_conv.convs, nn.ModuleDict
-                        ):
-                            # Try direct access with string key
-                            # edge_key = (
-                            #     f"{src_type}__to__{dst_type}__via__{rel_type}"
-                            # )
-                            key_str = str(edge_type)
-                            if key_str in hetero_conv.convs:
-                                gat_conv = hetero_conv.convs[key_str]
-                            # else:
-                            #     # Try with other string representations
-                            #     edge_key_variants = [
-                            #         f"{src_type}__{rel_type}__{dst_type}",
-                            #         f"({src_type}, {rel_type}, {dst_type})",
-                            #     ]
-
-                            #     for variant in edge_key_variants:
-                            #         if variant in hetero_conv.convs:
-                            #             gat_conv = hetero_conv.convs[variant]
-                            #             break
+                        if hasattr(hetero_conv, "convs"):
+                            try:
+                                convs_dict = getattr(hetero_conv, "convs", {})
+                                if hasattr(
+                                    convs_dict, "__contains__"
+                                ) and hasattr(convs_dict, "__getitem__"):
+                                    # Check if edge_type exists in the convolutions
+                                    if edge_type in convs_dict:
+                                        gat_conv = convs_dict[edge_type]
+                                    else:
+                                        # Try string representation
+                                        edge_type_str = str(edge_type)
+                                        if edge_type_str in convs_dict:
+                                            gat_conv = convs_dict[
+                                                edge_type_str
+                                            ]
+                                        else:
+                                            # Iterate through all available keys safely
+                                            if hasattr(convs_dict, "keys"):
+                                                for (
+                                                    conv_key
+                                                ) in convs_dict.keys():
+                                                    if (
+                                                        conv_key == edge_type
+                                                        or str(conv_key)
+                                                        == str(edge_type)
+                                                    ):
+                                                        gat_conv = convs_dict[
+                                                            conv_key
+                                                        ]
+                                                        break
+                            except (AttributeError, KeyError):
+                                # If direct access fails, set to None
+                                gat_conv = None
 
                         # Get source and destination node features
                         x_src = current_x_dict.get(src_type, None)
@@ -393,11 +405,7 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                                 else None
                             )
 
-                            # Create input tuple for GAT conv
-                            if src_type == dst_type:
-                                x_input = x_src
-                            else:
-                                x_input = (x_src, x_dst)
+                            x_input = (x_src, x_dst)
 
                             # Forward pass through GAT
                             # with return_attention_weights=True
@@ -415,15 +423,19 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                                         edge_index,
                                         return_attention_weights=True,
                                     )
-                            except (
-                                TypeError,
-                                ValueError,
-                                RuntimeError,
-                                AttributeError,
-                            ):
+                            # except (
+                            #     TypeError,
+                            #     ValueError,
+                            #     RuntimeError,
+                            #     AttributeError,
+                            # ):
+                            #
+                            except Exception as e:
+                                print(f"Attention extraction failed: {e}")
                                 # If attention extraction fails, store None
                                 attention_weights[edge_type] = None
                         else:
+                            print(f"GATConv not found for {edge_type}")
                             attention_weights[edge_type] = None
 
                 return attention_weights
