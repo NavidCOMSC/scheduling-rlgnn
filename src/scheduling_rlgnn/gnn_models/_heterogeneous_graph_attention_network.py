@@ -7,7 +7,6 @@ from torch_geometric.nn import (
     global_mean_pool,
     global_max_pool,
     global_add_pool,
-    BatchNorm,
     LayerNorm,
 )
 
