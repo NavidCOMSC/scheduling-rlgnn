@@ -2,7 +2,7 @@ import pytest
 import torch
 from torch_geometric.data import HeteroData
 
-from src.scheduling_rlgnn.gnn_models import (
+from scheduling_rlgnn.gnn_models import (
     _heterogeneous_graph_attention_network as hgat,
 )
 
