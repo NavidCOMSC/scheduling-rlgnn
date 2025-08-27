@@ -101,12 +101,13 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
             conv_dict = {}
             for edge_type in edge_types:
                 src_type, rel_type, dst_type = edge_type
-                
+
                 edge_key = f"{src_type}__to__{dst_type}__via__{rel_type}"
 
                 in_dim = hidden_dim
                 # For the last layer, output should be hidden_dim with 1 head
-                # For intermediate layers, output should be hidden_dim // num_heads with num_heads
+                # For intermediate layers, output should be hidden_dim //
+                # num_heads with num_heads
 
                 if i == num_layers - 1:
                     # Last layer: single head, full hidden_dim output
@@ -114,7 +115,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                     heads = 1
                     concat = False
                 else:
-                    # Intermediate layers: multiple heads, smaller output per head
+                    # Intermediate layers: multiple heads, smaller
+                    # output per head
                     out_dim = hidden_dim // num_heads
                     heads = num_heads
                     concat = True
@@ -139,7 +141,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
             # Batch normalization for each node type
             bn_dict = {}
             for node_type in node_types:
-                # All layers should output hidden_dim after head concatenation/single head
+                # All layers should output hidden_dim
+                # after head concatenation/single head
                 bn_dict[node_type] = LayerNorm(hidden_dim)
             self.batch_norms.append(nn.ModuleDict(bn_dict))
 
@@ -359,7 +362,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                                 if hasattr(
                                     convs_dict, "__contains__"
                                 ) and hasattr(convs_dict, "__getitem__"):
-                                    # Check if edge_type exists in the convolutions
+                                    # Check if edge_type exists
+                                    # in the convolutions
                                     if edge_type in convs_dict:
                                         gat_conv = convs_dict[edge_type]
                                     else:
@@ -370,7 +374,8 @@ class HeterogeneousGraphAttentionNetwork(nn.Module):
                                                 edge_type_str
                                             ]
                                         else:
-                                            # Iterate through all available keys safely
+                                            # Iterate through all
+                                            # available keys safely
                                             if hasattr(convs_dict, "keys"):
                                                 for (
                                                     conv_key
