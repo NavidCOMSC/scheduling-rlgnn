@@ -17,15 +17,13 @@ class HeteroGraphTransformer(nn.Module):
         self,
         metadata: Metadata,
         node_dims: Dict[str, int],
+        edge_dims: Optional[Dict[tuple, int]] = None,
         hidden_dim: int = 128,
         num_layers: int = 6,
         num_heads: int = 8,
         dropout: float = 0.1,
         max_nodes: int = 100,
         aggr: str = "add",
-        edge_dim: Optional[
-            int
-        ] = None,  # TODO: should the optional edge attribute be included?
     ):
         """
         Initialize Heterogeneous Graph Transformer.
@@ -50,6 +48,10 @@ class HeteroGraphTransformer(nn.Module):
         self.max_nodes = max_nodes
         self.num_heads = num_heads
 
+        # Determine edge_dims for TransformerConv
+        self.edge_dims = edge_dims or {}
+        self.use_edge_features = edge_dims is not None and len(edge_dims) > 0
+
         # Input projections for each node type
         self.input_projections = nn.ModuleDict()
         for node_type in self.node_types:
@@ -63,6 +65,16 @@ class HeteroGraphTransformer(nn.Module):
                 torch.randn(max_nodes, hidden_dim)
             )
 
+        # Edge Projections
+        self.edge_projections = nn.ModuleDict()
+        if self.use_edge_features:
+            for edge_type in self.edge_types:
+                if edge_type in self.edge_dims:
+                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                    self.edge_projections[edge_key] = Linear(
+                        self.edge_dims[edge_type], hidden_dim
+                    )
+
         # Heterogeneous transformer layers
         self.hetero_convs = nn.ModuleList()
         for _ in range(num_layers):
@@ -74,8 +86,7 @@ class HeteroGraphTransformer(nn.Module):
                     out_channels=hidden_dim,
                     heads=num_heads,
                     dropout=dropout,
-                    edge_dim=edge_dim,  # Can be modified to
-                    # exclude edge features
+                    edge_dim=hidden_dim if self.use_edge_features else None,
                     beta=True,
                     concat=False,
                 )
