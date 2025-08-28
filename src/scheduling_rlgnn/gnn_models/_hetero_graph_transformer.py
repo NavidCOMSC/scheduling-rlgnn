@@ -169,7 +169,6 @@ class HeteroGraphTransformer(nn.Module):
                 h_dict,
                 edge_index_dict,
                 edge_attr_dict=edge_attr_dict,
-                # TODO: Optional or be included?
             )
 
             # Add residual connections and layer norm
