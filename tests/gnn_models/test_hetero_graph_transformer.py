@@ -41,3 +41,41 @@ def hetero_data():
     data["job"].batch = torch.tensor([0])
 
     return data
+
+
+def test_forward_pass(hetero_data):
+    """Test forward pass returns correct output shapes."""
+    metadata = hetero_data.metadata()
+    node_dims = {"operation": 64, "machine": 32, "job": 16}
+    edge_dims = {("operation", "precedence", "operation"): 32}
+
+    model = HeteroGraphTransformer(
+        metadata=metadata,
+        node_dims=node_dims,
+        edge_dims=edge_dims,
+        hidden_dim=128,
+        num_layers=2,
+        num_heads=4,
+        dropout=0.1,
+        max_nodes=100,
+    )
+
+    # Extract data from HeteroData
+    x_dict = {
+        node_type: hetero_data[node_type].x
+        for node_type in hetero_data.node_types
+    }
+    edge_index_dict = hetero_data.edge_index_dict
+    edge_attr_dict = hetero_data.edge_attr_dict
+    batch_dict = {
+        node_type: hetero_data[node_type].batch
+        for node_type in hetero_data.node_types
+    }
+
+    # Forward pass
+    output_dict = model(x_dict, edge_index_dict, edge_attr_dict, batch_dict)
+
+    # Check output shapes for each node type
+    assert output_dict["operation"].shape == (3, 128)
+    assert output_dict["machine"].shape == (2, 128)
+    assert output_dict["job"].shape == (1, 128)
