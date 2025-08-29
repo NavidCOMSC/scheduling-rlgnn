@@ -23,7 +23,7 @@ class HeteroGraphTransformer(nn.Module):
         num_heads: int = 8,
         dropout: float = 0.1,
         max_nodes: int = 100,
-        aggr: str = "add",
+        aggr: str = "sum",
     ):
         """
         Initialize Heterogeneous Graph Transformer.
