@@ -58,6 +58,7 @@ def test_forward_pass(hetero_data):
         num_heads=4,
         dropout=0.1,
         max_nodes=100,
+        aggr="sum",
     )
 
     # Extract data from HeteroData
@@ -66,7 +67,24 @@ def test_forward_pass(hetero_data):
         for node_type in hetero_data.node_types
     }
     edge_index_dict = hetero_data.edge_index_dict
-    edge_attr_dict = hetero_data.edge_attr_dict
+
+    # Project edge attributes to hidden dimension and
+    # create edge attributes for ALL edge types
+    edge_attr_dict = {}
+    for edge_type in hetero_data.edge_types:
+        if edge_type in hetero_data.edge_attr_dict:
+            # Use existing edge attributes and project them
+            edge_key = (
+                f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+            )
+            edge_attr_dict[edge_type] = model.edge_projections[edge_key](
+                hetero_data.edge_attr_dict[edge_type]
+            )
+        else:
+            # Create dummy edge attributes for edge types without them
+            num_edges = hetero_data.edge_index_dict[edge_type].size(1)
+            edge_attr_dict[edge_type] = torch.zeros(num_edges, 128)
+
     batch_dict = {
         node_type: hetero_data[node_type].batch
         for node_type in hetero_data.node_types
