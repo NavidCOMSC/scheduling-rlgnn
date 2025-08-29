@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HeteroConv, TransformerConv, Linear
 from torch_geometric.typing import Metadata
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class HeteroGraphTransformer(nn.Module):
@@ -16,8 +16,8 @@ class HeteroGraphTransformer(nn.Module):
     def __init__(
         self,
         metadata: Metadata,
-        node_dims: Dict[str, int],
-        edge_dims: Optional[Dict[tuple, int]] = None,
+        node_dims: dict[str, int],
+        edge_dims: dict[tuple, int] | None = None,
         hidden_dim: int = 128,
         num_layers: int = 6,
         num_heads: int = 8,
@@ -132,11 +132,11 @@ class HeteroGraphTransformer(nn.Module):
 
     def forward(
         self,
-        x_dict: Dict[str, torch.Tensor],
-        edge_index_dict: Dict[Any, torch.Tensor],
-        edge_attr_dict: Optional[Dict[Any, torch.Tensor]] = None,
-        batch_dict: Optional[Dict[str, torch.Tensor]] = None,
-    ) -> Dict[str, torch.Tensor]:
+        x_dict: dict[str, torch.Tensor],
+        edge_index_dict: dict[Any, torch.Tensor],
+        edge_attr_dict: dict[Any, torch.Tensor] | None = None,
+        batch_dict: dict[str, torch.Tensor] | None = None,
+    ) -> dict[str, torch.Tensor]:
         """
         Forward pass through Heterogeneous Graph Transformer.
 
@@ -198,7 +198,7 @@ class HeteroGraphTransformer(nn.Module):
         self,
         h: torch.Tensor,
         node_type: str,
-        batch_dict: Optional[Dict[str, torch.Tensor]] = None,
+        batch_dict: dict[str, torch.Tensor] | None = None,
     ) -> torch.Tensor:
         """Add positional encoding to node features."""
         num_nodes = h.size(0)
@@ -250,10 +250,10 @@ class HeteroGraphTransformer(nn.Module):
 
     def get_attention_weights(
         self,
-        x_dict: Dict[str, torch.Tensor],
-        edge_index_dict: Dict[Any, torch.Tensor],
+        x_dict: dict[str, torch.Tensor],
+        edge_index_dict: dict[Any, torch.Tensor],
         layer_idx: int = -1,
-    ) -> Dict[Any, torch.Tensor]:
+    ) -> dict[Any, torch.Tensor]:
         """
         Extract attention weights from a specific layer.
 
