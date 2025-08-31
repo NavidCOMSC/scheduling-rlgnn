@@ -98,39 +98,40 @@ def test_forward_pass(hetero_data):
     assert output_dict["machine"].shape == (2, 128)
     assert output_dict["job"].shape == (1, 128)
 
-    def test_attention_weights(hetero_data):
-        """Test attention weight extraction."""
-        metadata = hetero_data.metadata()
-        node_dims = {"operation": 64, "machine": 32, "job": 16}
-        edge_dims = {("operation", "precedence", "operation"): 32}
 
-        model = HeteroGraphTransformer(
-            metadata=metadata,
-            node_dims=node_dims,
-            edge_dims=edge_dims,
-            hidden_dim=128,
-            num_layers=2,
-            num_heads=4,
-            dropout=0.1,
-            max_nodes=100,
-        )
+def test_attention_weights(hetero_data):
+    """Test attention weight extraction."""
+    metadata = hetero_data.metadata()
+    node_dims = {"operation": 64, "machine": 32, "job": 16}
+    edge_dims = {("operation", "precedence", "operation"): 32}
 
-        # Extract data from HeteroData
-        x_dict = {
-            node_type: hetero_data[node_type].x
-            for node_type in hetero_data.node_types
-        }
-        edge_index_dict = hetero_data.edge_index_dict
+    model = HeteroGraphTransformer(
+        metadata=metadata,
+        node_dims=node_dims,
+        edge_dims=edge_dims,
+        hidden_dim=128,
+        num_layers=2,
+        num_heads=4,
+        dropout=0.1,
+        max_nodes=100,
+    )
 
-        # Get attention weights
-        attention_weights = model.get_attention_weights(
-            x_dict, edge_index_dict, layer_idx=-1
-        )
+    # Extract data from HeteroData
+    x_dict = {
+        node_type: hetero_data[node_type].x
+        for node_type in hetero_data.node_types
+    }
+    edge_index_dict = hetero_data.edge_index_dict
 
-        # Check if attention weights are returned for precedence edges
-        precedence_key = ("operation", "precedence", "operation")
-        assert precedence_key in attention_weights
-        assert attention_weights[precedence_key] is not None
+    # Get attention weights
+    attention_weights = model.get_attention_weights(
+        x_dict, edge_index_dict, layer_idx=-1
+    )
 
-        # Check shape of attention weights (2 edges, 4 heads)
-        assert attention_weights[precedence_key].shape == (2, 4)
+    # Check if attention weights are returned for precedence edges
+    precedence_key = ("operation", "precedence", "operation")
+    assert precedence_key in attention_weights
+    assert attention_weights[precedence_key] is not None
+
+    # Check shape of attention weights (2 edges, 4 heads)
+    assert attention_weights[precedence_key].shape == (2, 4)
