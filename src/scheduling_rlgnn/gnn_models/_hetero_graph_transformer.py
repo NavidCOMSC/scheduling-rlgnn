@@ -252,6 +252,7 @@ class HeteroGraphTransformer(nn.Module):
         self,
         x_dict: dict[str, torch.Tensor],
         edge_index_dict: dict[Any, torch.Tensor],
+        edge_attr_dict: dict[Any, torch.Tensor] | None = None,
         layer_idx: int = -1,
     ) -> dict[Any, torch.Tensor]:
         """
@@ -260,6 +261,7 @@ class HeteroGraphTransformer(nn.Module):
         Args:
             x_dict: Node features
             edge_index_dict: Edge indices
+            edge_attr_dict: Edge attributes (optional)
             layer_idx: Layer index to extract weights from (-1 for last layer)
 
         Returns:
@@ -291,6 +293,11 @@ class HeteroGraphTransformer(nn.Module):
 
                         if edge_type in edge_index_dict:
                             edge_index = edge_index_dict[edge_type]
+                            edge_attr = (
+                                edge_attr_dict.get(edge_type)
+                                if edge_attr_dict
+                                else None
+                            )
 
                             # Get source and destination node features
                             x_src = h_dict[src_type]
@@ -309,6 +316,7 @@ class HeteroGraphTransformer(nn.Module):
                                     _, (_, alpha) = conv(
                                         (x_src, x_dst),
                                         edge_index,
+                                        edge_attr=edge_attr,
                                         return_attention_weights=True,
                                     )
                                     attention_weights[edge_type] = alpha
@@ -324,7 +332,9 @@ class HeteroGraphTransformer(nn.Module):
 
                 return attention_weights
             else:
-                h_dict = self.hetero_convs[i](h_dict, edge_index_dict)
+                h_dict = self.hetero_convs[i](
+                    h_dict, edge_index_dict, edge_attr_dict=edge_attr_dict
+                )
 
         return {}
 
