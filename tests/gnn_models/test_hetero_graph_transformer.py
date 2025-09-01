@@ -123,9 +123,25 @@ def test_attention_weights(hetero_data):
     }
     edge_index_dict = hetero_data.edge_index_dict
 
+    # Get attention weights with edge attributes
+    edge_attr_dict = {}
+    for edge_type in hetero_data.edge_types:
+        if edge_type in hetero_data.edge_attr_dict:
+            # Use existing edge attributes and project them
+            edge_key = (
+                f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+            )
+            edge_attr_dict[edge_type] = model.edge_projections[edge_key](
+                hetero_data.edge_attr_dict[edge_type]
+            )
+        else:
+            # Create dummy edge attributes for edge types without them
+            num_edges = hetero_data.edge_index_dict[edge_type].size(1)
+            edge_attr_dict[edge_type] = torch.zeros(num_edges, 128)
+
     # Get attention weights
     attention_weights = model.get_attention_weights(
-        x_dict, edge_index_dict, layer_idx=-1
+        x_dict, edge_index_dict, edge_attr_dict=edge_attr_dict, layer_idx=-1
     )
 
     # Check if attention weights are returned for precedence edges
