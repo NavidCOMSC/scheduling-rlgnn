@@ -194,7 +194,8 @@ class HeteroGraphTransformer(nn.Module):
 
         # Apply transformer layers
         for layer_idx in range(len(self.hetero_convs)):
-            # Heterogeneous convolution (attention) with projected edge attributes
+            # Heterogeneous convolution (attention)
+            # with projected edge attributes
             h_new_dict = self.hetero_convs[layer_idx](
                 h_dict,
                 edge_index_dict,
@@ -309,7 +310,11 @@ class HeteroGraphTransformer(nn.Module):
                     edge_type in self.edge_types
                     and edge_type in self.edge_dims
                 ):
-                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                    edge_key = (
+                        f"{edge_type[0]}"
+                        f"__to__{edge_type[2]}"
+                        f"__via__{edge_type[1]}"
+                    )
                     if edge_key in self.edge_projections:
                         projected_edge_attr_dict[edge_type] = (
                             self.edge_projections[edge_key](edge_attr)
@@ -380,7 +385,8 @@ class HeteroGraphTransformer(nn.Module):
 
                     # Extract attention weights
                     try:
-                        # Call the conv layer directly with return_attention_weights=True
+                        # Call the conv layer directly
+                        # with return_attention_weights=True
                         out = conv(
                             (x_src, x_dst),
                             edge_index,
