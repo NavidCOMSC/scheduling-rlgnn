@@ -80,13 +80,17 @@ class HeteroGraphTransformer(nn.Module):
         for _ in range(num_layers):
             conv_dict = {}
             for edge_type in self.edge_types:
-                # src_type, _, dst_type = edge_type
+                # Determine if this edge type has edge features
+                has_edge_features = (
+                    self.use_edge_features and edge_type in self.edge_dims
+                )
+
                 conv_dict[edge_type] = TransformerConv(
                     in_channels=hidden_dim,
                     out_channels=hidden_dim,
                     heads=num_heads,
                     dropout=dropout,
-                    edge_dim=hidden_dim if self.use_edge_features else None,
+                    edge_dim=hidden_dim if has_edge_features else None,
                     beta=True,
                     concat=False,
                 )
@@ -162,13 +166,31 @@ class HeteroGraphTransformer(nn.Module):
 
             h_dict[node_type] = self.dropout(h)
 
+        # Project edge attributes if provided
+        projected_edge_attr_dict = None
+        if self.use_edge_features and edge_attr_dict is not None:
+            projected_edge_attr_dict = {}
+            for edge_type, edge_attr in edge_attr_dict.items():
+                if (
+                    edge_type in self.edge_types
+                    and edge_type in self.edge_dims
+                ):
+                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                    if edge_key in self.edge_projections:
+                        projected_edge_attr_dict[edge_type] = (
+                            self.edge_projections[edge_key](edge_attr)
+                        )
+                    else:
+                        # If no projection defined for this edge type, skip it
+                        pass
+
         # Apply transformer layers
         for layer_idx in range(len(self.hetero_convs)):
-            # Heterogeneous convolution (attention)
+            # Heterogeneous convolution (attention) with projected edge attributes
             h_new_dict = self.hetero_convs[layer_idx](
                 h_dict,
                 edge_index_dict,
-                edge_attr_dict=edge_attr_dict,
+                edge_attr_dict=projected_edge_attr_dict,
             )
 
             # Add residual connections and layer norm
@@ -270,6 +292,24 @@ class HeteroGraphTransformer(nn.Module):
         if layer_idx == -1:
             layer_idx = len(self.hetero_convs) - 1
 
+        # Project edge attributes if provided (same as forward)
+        projected_edge_attr_dict = None
+        if self.use_edge_features and edge_attr_dict is not None:
+            projected_edge_attr_dict = {}
+            for edge_type, edge_attr in edge_attr_dict.items():
+                if (
+                    edge_type in self.edge_types
+                    and edge_type in self.edge_dims
+                ):
+                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                    if edge_key in self.edge_projections:
+                        projected_edge_attr_dict[edge_type] = (
+                            self.edge_projections[edge_key](edge_attr)
+                        )
+                    else:
+                        # If no projection defined for this edge type, skip it
+                        pass
+
         # Forward pass up to the specified layer
         h_dict = {}
         for node_type, x in x_dict.items():
@@ -280,7 +320,9 @@ class HeteroGraphTransformer(nn.Module):
 
         for i in range(layer_idx):
             h_new_dict = self.hetero_convs[i](
-                h_dict, edge_index_dict, edge_attr_dict=edge_attr_dict
+                h_dict,
+                edge_index_dict,
+                edge_attr_dict=projected_edge_attr_dict,
             )
 
             # Apply layer norm and feedforward (same as forward pass)
@@ -298,20 +340,6 @@ class HeteroGraphTransformer(nn.Module):
         attention_weights = {}
         hetero_conv_layer = self.hetero_convs[layer_idx]
 
-        # Prepare edge attributes if needed
-        projected_edge_attr_dict = None
-        if self.use_edge_features and edge_attr_dict is not None:
-            projected_edge_attr_dict = {}
-            for edge_type, edge_attr in edge_attr_dict.items():
-                if edge_type in self.edge_types:
-                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
-                    if edge_key in self.edge_projections:
-                        projected_edge_attr_dict[edge_type] = (
-                            self.edge_projections[edge_key](edge_attr)
-                        )
-                    else:
-                        projected_edge_attr_dict[edge_type] = edge_attr
-
         # Extract attention weights for each edge type
         for edge_type in self.edge_types:
             if edge_type not in edge_index_dict:
@@ -322,9 +350,7 @@ class HeteroGraphTransformer(nn.Module):
                 # conv = hetero_conv_layer.convs[edge_type]
                 convs_dict = getattr(hetero_conv_layer, "convs", None)
                 if convs_dict is None:
-                    raise AttributeError(
-                        "HeteroConv layer has no attribute 'convs'"
-                    )
+                    continue
 
                 conv = convs_dict[edge_type]
 
@@ -375,9 +401,6 @@ class HeteroGraphTransformer(nn.Module):
                         # Return edge indices as fallback
                         attention_weights[edge_type] = edge_index
                 else:
-                    print(
-                        f"Warning: Missing node features for edge type {edge_type}"
-                    )
                     attention_weights[edge_type] = edge_index
             except (KeyError, AttributeError, TypeError) as e:
                 print(
