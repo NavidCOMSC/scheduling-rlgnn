@@ -8,4 +8,12 @@ __author__ = "Navid Rahimi"
 __email__ = "amir.navid.rahimi@googlemail.com"
 
 from .rllib_subclasses import *
-from .gnn_models import *
+from .gnn_models import (
+    HeterogeneousGraphAttentionNetwork,
+    HeteroGraphTransformer,
+)
+
+__all__ = [
+    "HeterogeneousGraphAttentionNetwork",
+    "HeteroGraphTransformer",
+]
