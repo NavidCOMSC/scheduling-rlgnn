@@ -275,68 +275,117 @@ class HeteroGraphTransformer(nn.Module):
         for node_type, x in x_dict.items():
             h = self.input_projections[node_type](x)
             h = h + self.type_embeddings[node_type].unsqueeze(0)
-            h_dict[node_type] = h
+            h = self._add_positional_encoding(h, node_type, None)
+            h_dict[node_type] = self.dropout(h)
 
-        for i in range(layer_idx + 1):
-            if i == layer_idx:
-                # Extract attention weights at this layer
-                attention_weights = {}
+        for i in range(layer_idx):
+            h_new_dict = self.hetero_convs[i](
+                h_dict, edge_index_dict, edge_attr_dict=edge_attr_dict
+            )
 
-                # Access the HeteroConv layer and its constituent convolutions
-                hetero_conv_layer = self.hetero_convs[i]
+            # Apply layer norm and feedforward (same as forward pass)
+            for node_type in self.node_types:
+                if node_type in h_new_dict:
+                    h_residual = h_dict[node_type] + h_new_dict[node_type]
+                    h_residual = self.layer_norms[f"{node_type}_{i}"](
+                        h_residual
+                    )
+                    h_ff = getattr(self.feedforwards[i], node_type)(h_residual)
+                    h_dict[node_type] = h_residual + h_ff
+                    h_dict[node_type] = self.dropout(h_dict[node_type])
 
-                for edge_type in self.edge_types:
-                    edge_type_str = "__".join(edge_type)
-                    if hasattr(hetero_conv_layer.convs, edge_type_str):
-                        conv = getattr(hetero_conv_layer.convs, edge_type_str)
-                        src_type, _, dst_type = edge_type
+        # Extract attention weights from the target layer
+        attention_weights = {}
+        hetero_conv_layer = self.hetero_convs[layer_idx]
 
-                        if edge_type in edge_index_dict:
-                            edge_index = edge_index_dict[edge_type]
-                            edge_attr = (
-                                edge_attr_dict.get(edge_type)
-                                if edge_attr_dict
-                                else None
+        # Prepare edge attributes if needed
+        projected_edge_attr_dict = None
+        if self.use_edge_features and edge_attr_dict is not None:
+            projected_edge_attr_dict = {}
+            for edge_type, edge_attr in edge_attr_dict.items():
+                if edge_type in self.edge_types:
+                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                    if edge_key in self.edge_projections:
+                        projected_edge_attr_dict[edge_type] = (
+                            self.edge_projections[edge_key](edge_attr)
+                        )
+                    else:
+                        projected_edge_attr_dict[edge_type] = edge_attr
+
+        # Extract attention weights for each edge type
+        for edge_type in self.edge_types:
+            if edge_type not in edge_index_dict:
+                continue
+
+            # Get the specific TransformerConv for this edge type
+            try:
+                # conv = hetero_conv_layer.convs[edge_type]
+                convs_dict = getattr(hetero_conv_layer, "convs", None)
+                if convs_dict is None:
+                    raise AttributeError(
+                        "HeteroConv layer has no attribute 'convs'"
+                    )
+
+                conv = convs_dict[edge_type]
+
+                src_type, _, dst_type = edge_type
+                edge_index = edge_index_dict[edge_type]
+
+                # Get edge attributes if available
+                edge_attr = None
+                if (
+                    projected_edge_attr_dict is not None
+                    and edge_type in projected_edge_attr_dict
+                ):
+                    edge_attr = projected_edge_attr_dict[edge_type]
+
+                # Get source and destination node features
+                if src_type in h_dict and dst_type in h_dict:
+                    x_src = h_dict[src_type]
+                    x_dst = h_dict[dst_type] if dst_type != src_type else x_src
+
+                    # Extract attention weights
+                    try:
+                        # Call the conv layer directly with return_attention_weights=True
+                        out = conv(
+                            (x_src, x_dst),
+                            edge_index,
+                            edge_attr=edge_attr,
+                            return_attention_weights=True,
+                        )
+
+                        # Handle different return formats
+                        if isinstance(out, tuple) and len(out) == 2:
+                            if isinstance(out[1], tuple):
+                                # Format: (output, (edge_index, attention_weights))
+                                _, attention_weights[edge_type] = out[1]
+                            else:
+                                # Format: (output, attention_weights)
+                                attention_weights[edge_type] = out[1]
+                        else:
+                            print(
+                                f"Warning: Unexpected return format for {edge_type}"
                             )
+                            attention_weights[edge_type] = edge_index
 
-                            # Get source and destination node features
-                            x_src = h_dict[src_type]
-                            x_dst = (
-                                h_dict[dst_type]
-                                if dst_type != src_type
-                                else x_src
-                            )
-
-                            # Perform forward pass through
-                            # the specific conv layer
-                            with torch.no_grad():
-                                # Set conv to return attention weights
-                                conv.return_attention_weights = True
-                                try:
-                                    _, (_, alpha) = conv(
-                                        (x_src, x_dst),
-                                        edge_index,
-                                        edge_attr=edge_attr,
-                                        return_attention_weights=True,
-                                    )
-                                    attention_weights[edge_type] = alpha
-                                except Exception as e:
-                                    print(
-                                        f"Error extracting attention"
-                                        f" weights for {edge_type}: {e}"
-                                    )
-                                    # Fallback if attention extraction fails
-                                    attention_weights[edge_type] = edge_index
-                                finally:
-                                    conv.return_attention_weights = False
-
-                return attention_weights
-            else:
-                h_dict = self.hetero_convs[i](
-                    h_dict, edge_index_dict, edge_attr_dict=edge_attr_dict
+                    except Exception as e:
+                        print(
+                            f"Warning: Could not extract attention weights for {edge_type}: {e}"
+                        )
+                        # Return edge indices as fallback
+                        attention_weights[edge_type] = edge_index
+                else:
+                    print(
+                        f"Warning: Missing node features for edge type {edge_type}"
+                    )
+                    attention_weights[edge_type] = edge_index
+            except (KeyError, AttributeError, TypeError) as e:
+                print(
+                    f"Warning: Could not access conv for edge type {edge_type}: {e}"
                 )
+                attention_weights[edge_type] = edge_index_dict[edge_type]
 
-        return {}
+        return attention_weights
 
     @property
     def num_parameters(self) -> int:
