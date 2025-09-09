@@ -397,20 +397,23 @@ class HeteroGraphTransformer(nn.Module):
                         # Handle different return formats
                         if isinstance(out, tuple) and len(out) == 2:
                             if isinstance(out[1], tuple):
-                                # Format: (output, (edge_index, attention_weights))
+                                # Format: (output, (edge_index,
+                                # attention_weights))
                                 _, attention_weights[edge_type] = out[1]
                             else:
                                 # Format: (output, attention_weights)
                                 attention_weights[edge_type] = out[1]
                         else:
                             print(
-                                f"Warning: Unexpected return format for {edge_type}"
+                                f"Warning: Unexpected "
+                                f"return format for {edge_type}"
                             )
                             attention_weights[edge_type] = edge_index
 
                     except Exception as e:
                         print(
-                            f"Warning: Could not extract attention weights for {edge_type}: {e}"
+                            f"Warning: Could not extract attention "
+                            f"weights for {edge_type}: {e}"
                         )
                         # Return edge indices as fallback
                         attention_weights[edge_type] = edge_index
@@ -418,7 +421,8 @@ class HeteroGraphTransformer(nn.Module):
                     attention_weights[edge_type] = edge_index
             except (KeyError, AttributeError, TypeError) as e:
                 print(
-                    f"Warning: Could not access conv for edge type {edge_type}: {e}"
+                    f"Warning: Could not access "
+                    f"conv for edge type {edge_type}: {e}"
                 )
                 attention_weights[edge_type] = edge_index_dict[edge_type]
 
