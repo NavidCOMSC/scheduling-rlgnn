@@ -70,7 +70,11 @@ class HeteroGraphTransformer(nn.Module):
         if self.use_edge_features:
             for edge_type in self.edge_types:
                 if edge_type in self.edge_dims:
-                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                    edge_key = (
+                        f"{edge_type[0]}"
+                        f"__to__{edge_type[2]}"
+                        f"__via__{edge_type[1]}"
+                    )
                     self.edge_projections[edge_key] = Linear(
                         self.edge_dims[edge_type], hidden_dim
                     )
@@ -175,7 +179,11 @@ class HeteroGraphTransformer(nn.Module):
                     edge_type in self.edge_types
                     and edge_type in self.edge_dims
                 ):
-                    edge_key = f"{edge_type[0]}__to__{edge_type[2]}__via__{edge_type[1]}"
+                    edge_key = (
+                        f"{edge_type[0]}"
+                        f"__to__{edge_type[2]}"
+                        f"__via__{edge_type[1]}"
+                    )
                     if edge_key in self.edge_projections:
                         projected_edge_attr_dict[edge_type] = (
                             self.edge_projections[edge_key](edge_attr)
