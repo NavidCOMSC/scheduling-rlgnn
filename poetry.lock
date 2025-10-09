@@ -2066,14 +2066,14 @@ i18n = ["Babel (>=2.7)"]
 
 [[package]]
 name = "job-shop-lib"
-version = "1.5.0"
+version = "1.7.0"
 description = "An easy-to-use and modular Python library for the Job Shop Scheduling Problem (JSSP)"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "job_shop_lib-1.5.0-py3-none-any.whl", hash = "sha256:ee37197d94870ac6ef6d2197b7b4749c9039d99700824c479171b8346ca0b7f5"},
-    {file = "job_shop_lib-1.5.0.tar.gz", hash = "sha256:6411d10bb211b6bc9d15d2a9e4424e42f0d86f82a928e65e04a06789adf62acd"},
+    {file = "job_shop_lib-1.7.0-py3-none-any.whl", hash = "sha256:2e9d7cd1f1036e99596f201bc22b008061e0ccf2455dbb2c2ba2f57ec2ebd6e7"},
+    {file = "job_shop_lib-1.7.0.tar.gz", hash = "sha256:e473b51fd3a81d6c36272b4bf171f0a0fcfe4d92d93519a4da2e70f2e92d5587"},
 ]
 
 [package.dependencies]
@@ -2082,11 +2082,9 @@ imageio = {version = ">=2.34.1,<3.0.0", extras = ["ffmpeg"]}
 matplotlib = ">=3,<4"
 networkx = ">=3,<4"
 numpy = ">=1.26.4,<3.0.0"
-ortools = [
-    {version = ">=9.9,<10.0", markers = "sys_platform != \"darwin\""},
-    {version = ">=9.9,<9.13", markers = "sys_platform == \"darwin\""},
-]
+ortools = ">=9.9,<9.13"
 pyarrow = ">=15,<21"
+simanneal = ">=0.5.0,<0.6.0"
 
 [package.extras]
 pygraphviz = ["pygraphviz (>=1.12,<2.0)"]
@@ -3724,7 +3722,6 @@ description = "Google OR-Tools python libraries and modules"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "sys_platform == \"darwin\""
 files = [
     {file = "ortools-9.10.4067-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:84ef1309a3e78519aaecd7bdee6af0f35cc0aa94fbd4122da1d43c03af44126d"},
     {file = "ortools-9.10.4067-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:24b29cce73fb71e850321e64c16f18dd293d77a1678b3037a3b99bb1cec203cd"},
@@ -3759,64 +3756,6 @@ immutabledict = ">=3.0.0"
 numpy = ">=1.13.3"
 pandas = ">=2.0.0"
 protobuf = ">=5.26.1"
-
-[[package]]
-name = "ortools"
-version = "9.14.6206"
-description = "Google OR-Tools python libraries and modules"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-markers = "sys_platform != \"darwin\""
-files = [
-    {file = "ortools-9.14.6206-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:6e2364edd1577cd094e7c7121ec5fb0aa462a69a78ce29cdc40fa45943ff0091"},
-    {file = "ortools-9.14.6206-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:164b726b4d358ae68a018a52ff1999c0646d6f861b33676c2c83e2ddb60cfa13"},
-    {file = "ortools-9.14.6206-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ebb0e210969cc3246fe78dadf9038936a3a18edc8156e23a394e2bbcec962431"},
-    {file = "ortools-9.14.6206-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:174de2f04c106c7dcc5989560f2c0e065e78fba0ad0d1fd029897582f4823c3a"},
-    {file = "ortools-9.14.6206-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:e6d994ebcf9cbdda1e20a75662967124e7e6ffd707c7f60b2db1a11f2104d384"},
-    {file = "ortools-9.14.6206-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:5763472f8b05072c96c36c4eafadd9f6ffcdab38a81d8f0142fc408ad52a4342"},
-    {file = "ortools-9.14.6206-cp310-cp310-win_amd64.whl", hash = "sha256:6711516f837f06836ff9fda66fe4337b88c214f2ba6a921b84d3b05876f1fa8c"},
-    {file = "ortools-9.14.6206-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:8bcd8481846090585a4fac82800683555841685c49fa24578ad1e48a37918568"},
-    {file = "ortools-9.14.6206-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:5af2bbf2fff7d922ba036e27d7ff378abecb24749380c86a77fa6208d5ba35cd"},
-    {file = "ortools-9.14.6206-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a6ab43490583c4bbf0fff4e51bb1c15675d5651c2e8e12ba974fd08e8c05a48f"},
-    {file = "ortools-9.14.6206-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9aa2c0c50a765c6a060960dcb0207bd6aeb6341f5adacb3d33e613b7e7409428"},
-    {file = "ortools-9.14.6206-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:64ec63fd92125499e9ca6b72700406dda161eefdfef92f04c35c5150391f89a4"},
-    {file = "ortools-9.14.6206-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:8651008f05257471f45a919ade5027afa12ab6f7a4fdf0a8bcc18c92032f8571"},
-    {file = "ortools-9.14.6206-cp311-cp311-win_amd64.whl", hash = "sha256:ca60877830a631545234e83e7f6bd55830334a4d0c2b51f1669b1f2698d58b84"},
-    {file = "ortools-9.14.6206-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:e38c8c4a184820cbfdb812a8d484f6506cf16993ce2a95c88bc1c9d23b17c63e"},
-    {file = "ortools-9.14.6206-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:db685073cbed9f8bfaa744f5e883f3dea57c93179b0abe1788276fd3b074fa61"},
-    {file = "ortools-9.14.6206-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d4bfb8bffb29991834cf4bde7048ca8ee8caed73e8dd21e5ec7de99a33bbfea0"},
-    {file = "ortools-9.14.6206-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:eb464a698837e7f90ca5f9b3d748b6ddf553198a70032bc77824d1cd88695d2b"},
-    {file = "ortools-9.14.6206-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:8f33deaeb7c3dda8ca1d29c5b9aa9c3a4f2ca9ecf34f12a1f809bb2995f41274"},
-    {file = "ortools-9.14.6206-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:086e7c2dc4f23efffb20a5e20f618c7d6adb99b2d94f684cab482387da3bc434"},
-    {file = "ortools-9.14.6206-cp312-cp312-win_amd64.whl", hash = "sha256:17c13b0bfde17ac57789ad35243edf1318ecd5db23cf949b75ab62480599f188"},
-    {file = "ortools-9.14.6206-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:8d0df7eef8ba53ad235e29018389259bad2e667d9594b9c2a412ed6a5756bd4e"},
-    {file = "ortools-9.14.6206-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:57dfe10844ce8331634d4723040fe249263fd490407346efc314c0bc656849b5"},
-    {file = "ortools-9.14.6206-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5c0c2c00a6e5d5c462e76fdda7dbd40d0f9139f1df4211d34b36906696248020"},
-    {file = "ortools-9.14.6206-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:38044cf39952d93cbcc02f6acdbe0a9bd3628fbf17f0d7eb0374060fa028c22e"},
-    {file = "ortools-9.14.6206-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:98564de773d709e1e49cb3c32f6917589c314f047786d88bd5f324c0eb7be96e"},
-    {file = "ortools-9.14.6206-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:80528b0ac72dc3de00cbeef2ce028517a476450b5877b1cda1b8ecb9fa98505e"},
-    {file = "ortools-9.14.6206-cp313-cp313-win_amd64.whl", hash = "sha256:47b1b15dcb085d32c61621b790259193aefa9e4577abadf233d47fbe7d0b81ef"},
-    {file = "ortools-9.14.6206-cp313-cp313t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d26a0f9ed97ef9d3384a9069923585f5f974c3fde555a41f4d6381fbe7840bc4"},
-    {file = "ortools-9.14.6206-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d40d8141667d47405f296a9f687058c566d7816586e9a672b59e9fcec8493133"},
-    {file = "ortools-9.14.6206-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:aefea81ed81aa937873efc520381785ed65380e52917f492ab566f46bbb5660d"},
-    {file = "ortools-9.14.6206-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:f044bb277db3ab6a1b958728fe1cf14ca87c3800d67d7b321d876b48269340f6"},
-    {file = "ortools-9.14.6206-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:070dc7cebfa0df066acb6b9a6d02339351be8f91b2352b782ee7f40412207e20"},
-    {file = "ortools-9.14.6206-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:5eb558a03b4ada501ecdea7b89f0d3bdf2cc6752e1728759ccf27923f592a8c2"},
-    {file = "ortools-9.14.6206-cp39-cp39-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:646329fa74a5c48c591b7fabfd26743f6d2de4e632b3b96ec596c47bfe19177a"},
-    {file = "ortools-9.14.6206-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:aa5161924f35b8244295acd0fab2a8171bb08ef8d5cfaf1913a21274475704cc"},
-    {file = "ortools-9.14.6206-cp39-cp39-musllinux_1_2_aarch64.whl", hash = "sha256:e253526a026ae194aed544a0d065163f52a0c9cb606a1061c62df546877d5452"},
-    {file = "ortools-9.14.6206-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:dcb496ef633d884036770783f43bf8a47ff253ecdd8a8f5b95f00276ec241bfd"},
-    {file = "ortools-9.14.6206-cp39-cp39-win_amd64.whl", hash = "sha256:2733f635675de631fdc7b1611878ec9ee2f48a26434b7b3c07d0a0f535b92e03"},
-]
-
-[package.dependencies]
-absl-py = ">=2.0.0"
-immutabledict = ">=3.0.0"
-numpy = ">=1.13.3"
-pandas = ">=2.0.0"
-protobuf = ">=6.31.1,<6.32"
-typing-extensions = ">=4.12"
 
 [[package]]
 name = "overrides"
@@ -5516,6 +5455,17 @@ doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-
 enabler = ["pytest-enabler (>=2.2)"]
 test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21) ; python_version >= \"3.9\" and sys_platform != \"cygwin\"", "jaraco.envs (>=2.2)", "jaraco.path (>=3.7.2)", "jaraco.test (>=5.5)", "packaging (>=24.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-home (>=0.5)", "pytest-perf ; sys_platform != \"cygwin\"", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel (>=0.44.0)"]
 type = ["importlib_metadata (>=7.0.2) ; python_version < \"3.10\"", "jaraco.develop (>=7.21) ; sys_platform != \"cygwin\"", "mypy (==1.14.*)", "pytest-mypy"]
+
+[[package]]
+name = "simanneal"
+version = "0.5.0"
+description = "Simulated Annealing in Python"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "simanneal-0.5.0-py2.py3-none-any.whl", hash = "sha256:f93d90958ff1df68bc4a6e440892a19bbc0569ad9c6442fff659dc011b790b34"},
+]
 
 [[package]]
 name = "six"
