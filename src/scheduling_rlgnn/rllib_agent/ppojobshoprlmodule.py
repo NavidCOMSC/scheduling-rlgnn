@@ -87,8 +87,28 @@ class PPOJobShopRLModule(TorchRLModule):
 
             # Get action space dimension
             if isinstance(self.action_space, gym.spaces.Discrete):
-                num_actions = self.action_space.n
+                num_actions = int(self.action_space.n)
             else:
                 raise ValueError(
                     f"Unsupported action space: {type(self.action_space)}"
                 )
+
+            # Encoder configuration
+            hidden_dims = config.get("fcnet_hiddens", [256, 256])
+            activation = config.get("fcnet_activation", "relu")
+
+            # Shared encoder network
+            self.encoder = MLPEncoder(
+                input_dim=input_dim,
+                hidden_dims=hidden_dims,
+                activation=activation,
+            )
+
+            # Policy head (actor)
+            self.policy_head = PolicyHead(
+                input_dim=self.encoder.output_dim,
+                num_actions=num_actions,
+            )
+
+            # Value head (critic)
+            self.value_head = ValueHead(input_dim=self.encoder.output_dim)
