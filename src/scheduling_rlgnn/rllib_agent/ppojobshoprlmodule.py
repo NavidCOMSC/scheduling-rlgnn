@@ -227,3 +227,8 @@ class PPOJobShopRLModule(TorchRLModule):
             "action_dist_inputs": action_logits,
             "values": values,
         }
+
+    @override(RLModule)
+    def get_train_action_dist_cls(self):
+        """Return the action distribution class for training."""
+        return TorchCategorical
