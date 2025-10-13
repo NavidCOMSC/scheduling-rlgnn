@@ -1,7 +1,8 @@
 from typing import Any, Dict, Optional
 import torch
-import torch.nn as nn
+import ray
 import gymnasium as gym
+from ray import tune
 
 from ray.rllib.core.models.base import ENCODER_OUT
 from ray.rllib.core.rl_module.rl_module import RLModule
@@ -14,6 +15,7 @@ from ray.rllib.utils.typing import TensorType
 from scheduling_rlgnn.rllib_agent.mlpencoder import MLPEncoder
 from scheduling_rlgnn.rllib_agent.policyhead import PolicyHead
 from scheduling_rlgnn.rllib_agent.valuehead import ValueHead
+from ray.rllib.algorithms.ppo import PPOConfig
 
 
 class PPOJobShopRLModule(TorchRLModule):
@@ -242,3 +244,59 @@ class PPOJobShopRLModule(TorchRLModule):
     def get_inference_action_dist_cls(self):
         """Return the action distribution class for inference."""
         return TorchCategorical
+
+
+# Example of confiuring for PPOConfig
+def create_ppo_config_for_job_shop():
+    """
+    Create a PPO configuration for training with MultiJobShopGraphEnv.
+
+    Returns:
+        Dictionary with PPO configuration
+    """
+    config = (
+        PPOConfig()
+        .environment(
+            env="job_shop_lib.reinforcement_learning.MultiJobShopGraphEnv",
+            env_config={
+                # Configuration for MultiJobShopGraphEnv
+                # Adjust these based on your specific needs
+                "instance_generator_config": {
+                    # Instance generator parameters
+                },
+                "max_steps": 1000,
+                # Add other environment-specific configs
+            },
+        )
+        .framework("torch")
+        .rl_module(
+            rl_module_spec={
+                "module_class": PPOJobShopRLModule,
+                "model_config": {
+                    "fcnet_hiddens": [256, 256],  # Hidden layer dimensions
+                    "fcnet_activation": "relu",  # Activation function
+                },
+            },
+        )
+        .training(
+            lr=3e-4,
+            gamma=0.99,
+            lambda_=0.95,
+            clip_param=0.2,
+            vf_clip_param=10.0,
+            entropy_coeff=0.01,
+            num_sgd_iter=10,
+            sgd_minibatch_size=128,
+            train_batch_size=4096,
+        )
+        .env_runners(
+            num_env_runners=4,
+            num_envs_per_env_runner=1,
+            rollout_fragment_length="auto",
+        )
+        .resources(
+            num_gpus=1,  # Use GPU if available
+        )
+    )
+
+    return config
