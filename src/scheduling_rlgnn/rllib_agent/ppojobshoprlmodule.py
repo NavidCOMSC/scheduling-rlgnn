@@ -182,3 +182,17 @@ class PPOJobShopRLModule(TorchRLModule):
         action_logits = self.policy_head(encoded)
 
         return {"action_dist_inputs": action_logits}
+
+    @override(TorchRLModule)
+    def _forward_exploration(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Forward pass for exploration (training data collection).
+
+        Args:
+            batch: Input batch containing observations
+
+        Returns:
+            Dictionary containing action logits
+        """
+        # For PPO, exploration is the same as inference
+        return self._forward_inference(batch)
