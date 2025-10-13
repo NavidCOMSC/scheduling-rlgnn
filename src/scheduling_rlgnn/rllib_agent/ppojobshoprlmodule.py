@@ -49,66 +49,111 @@ class PPOJobShopRLModule(TorchRLModule):
             **kwargs,
         )
 
-        @override(TorchRLModule)
-        def setup(self):
-            """
-            Setup the neural network architecture.
-            """
-            # Get model configuration with defaults
-            config = self.model_config or {}
+    @override(TorchRLModule)
+    def setup(self):
+        """
+        Setup the neural network architecture.
+        """
+        # Get model configuration with defaults
+        config = self.model_config or {}
 
-            # Handle different observation space types
-            if isinstance(self.observation_space, gym.spaces.Box):
-                # Flatten the observation space
+        # Handle different observation space types
+        if isinstance(self.observation_space, gym.spaces.Box):
+            # Flatten the observation space
+            input_dim = int(
+                torch.prod(torch.tensor(self.observation_space.shape))
+            )
+        elif isinstance(self.observation_space, gym.spaces.Dict):
+            # For graph-based observations, we'll handle the node features
+            # Assuming 'node_features' key exists in the observation dict
+            if "node_features" in self.observation_space.spaces:
+                node_feat_space = self.observation_space.spaces[
+                    "node_features"
+                ]
                 input_dim = int(
-                    torch.prod(torch.tensor(self.observation_space.shape))
+                    torch.prod(torch.tensor(node_feat_space.shape))
                 )
-            elif isinstance(self.observation_space, gym.spaces.Dict):
-                # For graph-based observations, we'll handle the node features
-                # Assuming 'node_features' key exists in the observation dict
-                if "node_features" in self.observation_space.spaces:
-                    node_feat_space = self.observation_space.spaces[
-                        "node_features"
-                    ]
-                    input_dim = int(
-                        torch.prod(torch.tensor(node_feat_space.shape))
-                    )
+            else:
+                # Fallback: sum all feature dimensions
+                input_dim = sum(
+                    int(torch.prod(torch.tensor(space.shape)))
+                    for space in self.observation_space.spaces.values()
+                    if isinstance(space, gym.spaces.Box)
+                )
+        else:
+            raise ValueError(
+                f"Unsupported observation space: {type(self.observation_space)}"
+            )
+
+        # Get action space dimension
+        if isinstance(self.action_space, gym.spaces.Discrete):
+            num_actions = int(self.action_space.n)
+        else:
+            raise ValueError(
+                f"Unsupported action space: {type(self.action_space)}"
+            )
+
+        # Encoder configuration
+        hidden_dims = config.get("fcnet_hiddens", [256, 256])
+        activation = config.get("fcnet_activation", "relu")
+
+        # Shared encoder network
+        self.encoder = MLPEncoder(
+            input_dim=input_dim,
+            hidden_dims=hidden_dims,
+            activation=activation,
+        )
+
+        # Policy head (actor)
+        self.policy_head = PolicyHead(
+            input_dim=self.encoder.output_dim,
+            num_actions=num_actions,
+        )
+
+        # Value head (critic)
+        self.value_head = ValueHead(input_dim=self.encoder.output_dim)
+
+    def _preprocess_observations(self, batch: Dict[str, Any]) -> torch.Tensor:
+        """
+        Preprocess observations from the environment.
+
+        Args:
+            batch: Batch of observations
+
+        Returns:
+            Processed tensor ready for the encoder
+        """
+        obs = batch["obs"]
+
+        if isinstance(self.observation_space, gym.spaces.Box):
+            # Flatten if necessary
+            if len(obs.shape) > 2:
+                obs = obs.reshape(obs.shape[0], -1)
+            return obs
+
+        elif isinstance(self.observation_space, gym.spaces.Dict):
+            # Handle dictionary observations (graph-based)
+            if "node_features" in obs:
+                # Use node features (may need aggregation for graph-level tasks)
+                node_features = obs["node_features"]
+
+                # If we have multiple nodes, we can use mean pooling
+                if (
+                    len(node_features.shape) == 3
+                ):  # [batch, num_nodes, features]
+                    # Mean pooling over nodes
+                    return torch.mean(node_features, dim=1)
                 else:
-                    # Fallback: sum all feature dimensions
-                    input_dim = sum(
-                        int(torch.prod(torch.tensor(space.shape)))
-                        for space in self.observation_space.spaces.values()
-                        if isinstance(space, gym.spaces.Box)
-                    )
+                    return node_features
+
             else:
-                raise ValueError(
-                    f"Unsupported observation space: {type(self.observation_space)}"
-                )
+                # Concatenate all features
+                features = []
+                for key in sorted(obs.keys()):
+                    feat = obs[key]
+                    if len(feat.shape) > 2:
+                        feat = feat.reshape(feat.shape[0], -1)
+                    features.append(feat)
+                return torch.cat(features, dim=-1)
 
-            # Get action space dimension
-            if isinstance(self.action_space, gym.spaces.Discrete):
-                num_actions = int(self.action_space.n)
-            else:
-                raise ValueError(
-                    f"Unsupported action space: {type(self.action_space)}"
-                )
-
-            # Encoder configuration
-            hidden_dims = config.get("fcnet_hiddens", [256, 256])
-            activation = config.get("fcnet_activation", "relu")
-
-            # Shared encoder network
-            self.encoder = MLPEncoder(
-                input_dim=input_dim,
-                hidden_dims=hidden_dims,
-                activation=activation,
-            )
-
-            # Policy head (actor)
-            self.policy_head = PolicyHead(
-                input_dim=self.encoder.output_dim,
-                num_actions=num_actions,
-            )
-
-            # Value head (critic)
-            self.value_head = ValueHead(input_dim=self.encoder.output_dim)
+        return obs
