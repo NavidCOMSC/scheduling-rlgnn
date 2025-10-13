@@ -198,3 +198,32 @@ class PPOJobShopRLModule(TorchRLModule):
         """
         # For PPO, exploration is the same as inference
         return self._forward_inference(batch)
+
+    @override(TorchRLModule)
+    def _forward_train(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Forward pass for training (computing losses).
+
+        Args:
+            batch: Input batch containing observations
+
+        Returns:
+            Dictionary containing action logits and value predictions
+        """
+
+        # Preprocess observations
+        obs_processed = self._preprocess_observations(batch)
+
+        # Encode observations
+        encoded = self.encoder(obs_processed)
+
+        # Compute action logits
+        action_logits = self.policy_head(encoded)
+
+        # Compute value predictions
+        values = self.value_head(encoded)
+
+        return {
+            "action_dist_inputs": action_logits,
+            "values": values,
+        }
