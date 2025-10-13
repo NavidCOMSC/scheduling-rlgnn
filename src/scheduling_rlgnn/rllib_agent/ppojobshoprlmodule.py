@@ -232,3 +232,8 @@ class PPOJobShopRLModule(TorchRLModule):
     def get_train_action_dist_cls(self):
         """Return the action distribution class for training."""
         return TorchCategorical
+
+    @override(RLModule)
+    def get_exploration_action_dist_cls(self):
+        """Return the action distribution class for exploration."""
+        return TorchCategorical
