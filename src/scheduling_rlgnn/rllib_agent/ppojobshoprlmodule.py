@@ -16,6 +16,7 @@ from scheduling_rlgnn.rllib_agent.mlpencoder import MLPEncoder
 from scheduling_rlgnn.rllib_agent.policyhead import PolicyHead
 from scheduling_rlgnn.rllib_agent.valuehead import ValueHead
 from ray.rllib.algorithms.ppo import PPOConfig
+from ray.rllib.core.rl_module.rl_module import RLModuleSpec
 
 
 class PPOJobShopRLModule(TorchRLModule):
@@ -260,7 +261,6 @@ def create_ppo_config_for_job_shop():
             env="job_shop_lib.reinforcement_learning.MultiJobShopGraphEnv",
             env_config={
                 # Configuration for MultiJobShopGraphEnv
-                # Adjust these based on your specific needs
                 "instance_generator_config": {
                     # Instance generator parameters
                 },
@@ -270,13 +270,13 @@ def create_ppo_config_for_job_shop():
         )
         .framework("torch")
         .rl_module(
-            rl_module_spec={
-                "module_class": PPOJobShopRLModule,
-                "model_config": {
+            rl_module_spec=RLModuleSpec(
+                module_class=PPOJobShopRLModule,
+                model_config_dict={
                     "fcnet_hiddens": [256, 256],  # Hidden layer dimensions
                     "fcnet_activation": "relu",  # Activation function
                 },
-            },
+            ),
         )
         .training(
             lr=3e-4,
