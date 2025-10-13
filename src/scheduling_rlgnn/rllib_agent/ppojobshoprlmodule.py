@@ -184,7 +184,9 @@ class PPOJobShopRLModule(TorchRLModule):
         return {"action_dist_inputs": action_logits}
 
     @override(TorchRLModule)
-    def _forward_exploration(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+    def _forward_exploration(
+        self, batch: Dict[str, Any], **kwargs
+    ) -> Dict[str, Any]:
         """
         Forward pass for exploration (training data collection).
 
