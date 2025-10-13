@@ -157,3 +157,26 @@ class PPOJobShopRLModule(TorchRLModule):
                 return torch.cat(features, dim=-1)
 
         return obs
+
+    @override(TorchRLModule)
+    def _forward_inference(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Forward pass for inference (deployment/production).
+
+        Args:
+            batch: Input batch containing observations
+
+        Returns:
+            Dictionary containing action logits
+        """
+
+        # Preprocess observations
+        obs_processed = self._preprocess_observations(batch)
+
+        # Encode observations
+        encoded = self.encoder(obs_processed)
+
+        # Compute action logits
+        action_logits = self.policy_head(encoded)
+
+        return {"action_dist_inputs": action_logits}
