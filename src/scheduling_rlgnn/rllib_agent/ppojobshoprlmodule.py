@@ -159,7 +159,9 @@ class PPOJobShopRLModule(TorchRLModule):
         return obs
 
     @override(TorchRLModule)
-    def _forward_inference(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+    def _forward_inference(
+        self, batch: Dict[str, Any], **kwargs
+    ) -> Dict[str, Any]:
         """
         Forward pass for inference (deployment/production).
 
