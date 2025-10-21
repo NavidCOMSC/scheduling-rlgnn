@@ -70,6 +70,7 @@ ipywidgets = "^8.1.0"
 notebook = "^7.0.0"
 
 # Modified build-system requirements
+ipython = ">=8.0.0,<9.0.0"
 [build-system]
 requires = ["poetry-core>=1.0.0", "setuptools"]
 build-backend = "poetry.core.masonry.api"
