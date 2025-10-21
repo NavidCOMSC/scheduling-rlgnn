@@ -52,7 +52,7 @@ class NodeIsolationEnv(gym.Env):
         )
 
         self.nx_graph: nx.Graph = nx.Graph()
-        self.terrorist_node: int | None = None
+        self.target_node: int | None = None
         self.pos = None
         self.action_mask = np.ones(self.num_nodes, dtype=np.int8)
 
@@ -62,8 +62,8 @@ class NodeIsolationEnv(gym.Env):
         """
         # "x" -> Node features [N, 1]
         node_features = np.zeros((self.num_nodes, 1), dtype=np.float32)
-        if self.terrorist_node is not None:
-            node_features[self.terrorist_node, 0] = 1.0
+        if self.target_node is not None:
+            node_features[self.target_node, 0] = 1.0
 
         # "edge_index" -> COO format [2, E]
         if self.nx_graph.number_of_edges() == 0:
@@ -77,7 +77,7 @@ class NodeIsolationEnv(gym.Env):
         action_mask = np.zeros(self.num_nodes, dtype=np.int8)
         if self.nx_graph.number_of_nodes() > 0:
             for node in self.nx_graph.nodes():
-                if node != self.terrorist_node:
+                if node != self.target_node:
                     action_mask[node] = 1
 
         return {
@@ -101,11 +101,9 @@ class NodeIsolationEnv(gym.Env):
             ):
                 break
 
-        self.terrorist_node = self.np_random.choice(
-            list(self.nx_graph.nodes())
-        )
+        self.target_node = self.np_random.choice(list(self.nx_graph.nodes()))
         self.action_mask = np.ones(self.num_nodes, dtype=np.int8)
-        self.action_mask[self.terrorist_node] = 0
+        self.action_mask[self.target_node] = 0
         # Pass a numpy.random.RandomState object to nx.spring_layout
         self.pos = nx.spring_layout(self.nx_graph, seed=seed)
         observation = self._get_obs()
@@ -116,7 +114,7 @@ class NodeIsolationEnv(gym.Env):
         is_valid_action = (
             self.nx_graph.number_of_nodes() > 0
             and action in self.nx_graph.nodes()
-            and action != self.terrorist_node
+            and action != self.target_node
         )
         num_remaining_nodes = self.nx_graph.number_of_nodes()
         if is_valid_action:
@@ -128,8 +126,8 @@ class NodeIsolationEnv(gym.Env):
         observation = self._get_obs()
         info = self._get_info()
         if (
-            self.terrorist_node is not None
-            and self.terrorist_node in self.nx_graph.nodes()
+            self.target_node is not None
+            and self.target_node in self.nx_graph.nodes()
         ):
             terminated = (num_remaining_nodes <= 2) or (
                 len(observation["action_mask"].nonzero()[0]) == 0
@@ -148,7 +146,7 @@ class NodeIsolationEnv(gym.Env):
             return
         self.ax.clear()
         node_colors = [
-            "red" if node == self.terrorist_node else "skyblue"
+            "red" if node == self.target_node else "skyblue"
             for node in self.nx_graph.nodes()
         ]
 
@@ -163,7 +161,7 @@ class NodeIsolationEnv(gym.Env):
             font_weight="bold",
         )
 
-        self.ax.set_title(f"Isolate the Red Node ({self.terrorist_node})")
+        self.ax.set_title(f"Isolate the Red Node ({self.target_node})")
         display.display(self.fig)
 
     def close(self):
