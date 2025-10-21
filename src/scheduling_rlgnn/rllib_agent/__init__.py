@@ -1,9 +1,9 @@
 """RLLib Agent Constructor"""
 
-from .mlpencoder import MLPEncoder
-from .ppojobshoprlmodule import PPOJobShopRLModule
-from .policyhead import PolicyHead
-from .valuehead import ValueHead
+from ._mlpencoder import MLPEncoder
+from ._ppojobshoprlmodule import PPOJobShopRLModule
+from ._policyhead import PolicyHead
+from ._valuehead import ValueHead
 
 __all__ = [
     "MLPEncoder",
