@@ -39,3 +39,10 @@ def test_environment():
 
     env.close()
     print("NodeIsolationEnv test completed successfully.")
+
+
+def train_ppo_node_isolation():
+    """Train PPO on the NodeIsolationEnv using PPOJobShopRLModule."""
+
+    # Initialize Ray
+    ray.init(ignore_reinit_error=True)
