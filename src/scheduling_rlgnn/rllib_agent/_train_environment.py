@@ -46,3 +46,92 @@ def train_ppo_node_isolation():
 
     # Initialize Ray
     ray.init(ignore_reinit_error=True)
+
+    # Register the custom environment
+    def env_creator(config):
+        return NodeIsolationEnv(
+            num_nodes=config.get("num_nodes", 15), p=config.get("p", 0.25)
+        )
+
+    tune.register_env("NodeIsolationEnv", env_creator)
+
+    # Create PPO configuration
+    config = (
+        PPOConfig()
+        .environment(
+            "NodeIsolationEnv",
+            env_config={"num_nodes": 15, "p": 0.25},
+        )
+        .framework("torch")
+        .rl_module(
+            rl_module_spec=RLModuleSpec(
+                module_class=PPOJobShopRLModule,
+                model_config_dict={
+                    "fcnet_hiddens": [128, 128, 64],
+                    "fcnet_activation": "relu",
+                },
+            )
+        )
+        .training(
+            train_batch_size=2000,
+            sgd_minibatch_size=128,
+            num_sgd_iter=10,
+            lr=3e-4,
+            gamma=0.99,
+            lambda_=0.95,
+            clip_param=0.2,
+            vf_clip_param=10.0,
+            entropy_coeff=0.01,
+        )
+        .rollout(
+            num_rollout_workers=2,
+            num_envs_per_worker=1,
+        )
+        .resources(
+            num_gpus=0,
+        )
+        .debugging(
+            log_level="INFO",
+        )
+    )
+
+    # Create the PPO algorithm
+    print("Building PPO algorithm...")
+    ppo_algorithm = config.build()
+
+    # training loop
+    print("\nStarting training...")
+    num_iterations = 20
+
+    for i in range(num_iterations):
+        result = ppo_algorithm.train()
+
+        print(f"\n{'='*60}")
+        print(f"Iteration {i+1}/{num_iterations}")
+        print(f"{'='*60}")
+        print(
+            f"Episode reward mean: {result['env_runners']['episode_return_mean']:.2f}"
+        )
+        print(
+            f"Episode reward min: {result['env_runners']['episode_return_min']:.2f}"
+        )
+        print(
+            f"Episode reward max: {result['env_runners']['episode_return_max']:.2f}"
+        )
+        print(
+            f"Episode length mean: {result['env_runners']['episode_len_mean']:.2f}"
+        )
+        print(f"Training iteration time: {result['time_total_s']:.2f}s")
+
+        # Optionally save checkpoint
+        if (i + 1) % 10 == 0:
+            checkpoint_dir = ppo_algorithm.save()
+            print(f"Checkpoint saved at: {checkpoint_dir}")
+
+    print("\n" + "=" * 60)
+    print("Training completed.")
+    print("=" * 60)
+
+    # cleanup
+    ppo_algorithm.stop()
+    ray.shutdown()
