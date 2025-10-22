@@ -58,7 +58,7 @@ def train_ppo_node_isolation():
     # Create PPO configuration
     config = PPOConfig()
     config.environment(
-        "NodeIsolationEnv",
+        "NodeIsolationEnv-v0",
         env_config={"num_nodes": 15, "p": 0.25},
     )
     config.framework("torch")
@@ -127,5 +127,59 @@ def train_ppo_node_isolation():
     print("=" * 60)
 
     # cleanup
+    ppo_algorithm.stop()
+    ray.shutdown()
+
+
+def evaluate_trained_agent(checkpoint_path=None):
+    """
+    Evaluate a trained agent (optional - if you have a checkpoint).
+
+    Args:
+        checkpoint_path: Path to the saved checkpoint
+    """
+
+    if checkpoint_path is None:
+        print("No checkpoint path provided. Skipping evaluation.")
+        return
+
+    ray.init(ignore_reinit_error=True)
+
+    # Register environment
+    tune.register_env(
+        "NodeIsolation-v0",
+        lambda config: NodeIsolationEnv(num_nodes=15, p=0.25),
+    )
+
+    # Load the trained algorithm
+    config = PPOConfig().environment(
+        "NodeIsolation-v0",
+    )
+    ppo_algorithm = config.build()
+    ppo_algorithm.restore(checkpoint_path)
+
+    # Run evaluation episodes
+    env = NodeIsolationEnv(num_nodes=15, p=0.25)
+    num_eval_episodes = 10
+
+    for episode in range(num_eval_episodes):
+        obs, info = env.reset()
+        episode_reward = 0.0
+        done = False
+        steps = 0
+
+        while not done:
+            # Get action from policy
+            action = ppo_algorithm.compute_single_action(obs)
+            obs, reward, terminated, truncated, info = env.step(action)
+            episode_reward += reward
+            steps += 1
+            done = terminated or truncated
+
+        print(
+            f"Episode {episode + 1}: Total Reward: {episode_reward:.2f}, Steps: {steps}"
+        )
+
+    env.close()
     ppo_algorithm.stop()
     ray.shutdown()
