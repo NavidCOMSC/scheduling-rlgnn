@@ -183,3 +183,11 @@ def evaluate_trained_agent(checkpoint_path=None):
     env.close()
     ppo_algorithm.stop()
     ray.shutdown()
+
+    if __name__ == "__main__":
+
+        # First, test the environment
+        test_environment()
+
+        # Then, train the PPO agent
+        train_ppo_node_isolation()
