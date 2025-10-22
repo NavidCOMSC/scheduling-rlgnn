@@ -56,43 +56,37 @@ def train_ppo_node_isolation():
     tune.register_env("NodeIsolationEnv", env_creator)
 
     # Create PPO configuration
-    config = (
-        PPOConfig()
-        .environment(
-            "NodeIsolationEnv",
-            env_config={"num_nodes": 15, "p": 0.25},
+    config = PPOConfig()
+    config.environment(
+        "NodeIsolationEnv",
+        env_config={"num_nodes": 15, "p": 0.25},
+    )
+    config.framework("torch")
+    config.rl_module(
+        rl_module_spec=RLModuleSpec(
+            module_class=PPOJobShopRLModule,
+            model_config_dict={
+                "fcnet_hiddens": [128, 128, 64],
+                "fcnet_activation": "relu",
+            },
         )
-        .framework("torch")
-        .rl_module(
-            rl_module_spec=RLModuleSpec(
-                module_class=PPOJobShopRLModule,
-                model_config_dict={
-                    "fcnet_hiddens": [128, 128, 64],
-                    "fcnet_activation": "relu",
-                },
-            )
-        )
-        .training(
-            train_batch_size=2000,
-            sgd_minibatch_size=128,
-            num_sgd_iter=10,
-            lr=3e-4,
-            gamma=0.99,
-            lambda_=0.95,
-            clip_param=0.2,
-            vf_clip_param=10.0,
-            entropy_coeff=0.01,
-        )
-        .rollout(
-            num_rollout_workers=2,
-            num_envs_per_worker=1,
-        )
-        .resources(
-            num_gpus=0,
-        )
-        .debugging(
-            log_level="INFO",
-        )
+    )
+    config.training(
+        train_batch_size=2000,
+        minibatch_size=128,
+        num_sgd_iter=10,
+        lr=3e-4,
+        gamma=0.99,
+    )
+    config.rollouts(
+        num_rollout_workers=2,
+        num_envs_per_worker=1,
+    )
+    config.resources(
+        num_gpus=0,
+    )
+    config.debugging(
+        log_level="INFO",
     )
 
     # Create the PPO algorithm
