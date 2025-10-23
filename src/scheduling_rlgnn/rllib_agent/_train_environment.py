@@ -45,6 +45,7 @@ def train_ppo_node_isolation():
     """Train PPO on the NodeIsolationEnv using PPOJobShopRLModule."""
 
     # Initialize Ray
+    print("Initializing Ray...")
     ray.init(ignore_reinit_error=True)
 
     # Register the custom environment
@@ -53,9 +54,10 @@ def train_ppo_node_isolation():
             num_nodes=config.get("num_nodes", 15), p=config.get("p", 0.25)
         )
 
-    tune.register_env("NodeIsolationEnv", env_creator)
+    tune.register_env("NodeIsolationEnv-v0", env_creator)
 
     # Create PPO configuration
+    print("Creating PPO configuration...")
     config = PPOConfig()
     config.environment(
         "NodeIsolationEnv-v0",
