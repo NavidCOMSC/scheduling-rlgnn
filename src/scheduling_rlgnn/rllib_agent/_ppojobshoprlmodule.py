@@ -15,8 +15,6 @@ from ray.rllib.utils.typing import TensorType
 from scheduling_rlgnn.rllib_agent._mlpencoder import MLPEncoder
 from scheduling_rlgnn.rllib_agent._policyhead import PolicyHead
 from scheduling_rlgnn.rllib_agent._valuehead import ValueHead
-from ray.rllib.algorithms.ppo import PPOConfig
-from ray.rllib.core.rl_module.rl_module import RLModuleSpec
 
 
 class PPOJobShopRLModule(TorchRLModule):
